@@ -57,7 +57,7 @@ void _impl_k_msgq_init(struct k_msgq *q, char *buffer,
 	q->read_ptr = buffer;
 	q->write_ptr = buffer;
 	q->used_msgs = 0;
-	sys_dlist_init(&q->wait_q);
+	_waitq_init(&q->wait_q);
 	SYS_TRACING_OBJ_INIT(k_msgq, q);
 
 	_k_object_init(q);

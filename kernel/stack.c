@@ -48,7 +48,7 @@ SYS_INIT(init_stack_module, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 void _impl_k_stack_init(struct k_stack *stack, u32_t *buffer,
 			unsigned int num_entries)
 {
-	sys_dlist_init(&stack->wait_q);
+	_waitq_init(&stack->wait_q);
 	stack->next = stack->base = buffer;
 	stack->top = stack->base + num_entries;
 

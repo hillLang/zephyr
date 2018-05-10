@@ -134,8 +134,8 @@ void _impl_k_pipe_init(struct k_pipe *pipe, unsigned char *buffer, size_t size)
 	pipe->bytes_used = 0;
 	pipe->read_index = 0;
 	pipe->write_index = 0;
-	sys_dlist_init(&pipe->wait_q.writers);
-	sys_dlist_init(&pipe->wait_q.readers);
+	_waitq_init(&pipe->wait_q.writers);
+	_waitq_init(&pipe->wait_q.readers);
 	SYS_TRACING_OBJ_INIT(k_pipe, pipe);
 	_k_object_init(pipe);
 }
@@ -289,8 +289,7 @@ static bool pipe_xfer_prepare(sys_dlist_t      *xfer_list,
 	size_t num_bytes = 0;
 
 	if (timeout == K_NO_WAIT) {
-		for (node = sys_dlist_peek_head(wait_q); node != NULL;
-		     node = sys_dlist_peek_next(wait_q, node)) {
+		SYS_DLIST_FOR_EACH_NODE(&wait_q->waitq, node) {
 			thread = (struct k_thread *)node;
 			desc = (struct k_pipe_desc *)thread->base.swap_data;
 
@@ -314,7 +313,7 @@ static bool pipe_xfer_prepare(sys_dlist_t      *xfer_list,
 	sys_dlist_init(xfer_list);
 	num_bytes = 0;
 
-	while ((thread = (struct k_thread *) sys_dlist_peek_head(wait_q))) {
+	while ((thread = _waitq_head(wait_q))) {
 		desc = (struct k_pipe_desc *)thread->base.swap_data;
 		num_bytes += desc->bytes_to_xfer;
 

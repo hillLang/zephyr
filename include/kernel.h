@@ -90,7 +90,11 @@ extern "C" {
 #define K_HIGHEST_APPLICATION_THREAD_PRIO (K_HIGHEST_THREAD_PRIO)
 #define K_LOWEST_APPLICATION_THREAD_PRIO (K_LOWEST_THREAD_PRIO - 1)
 
-typedef sys_dlist_t _wait_q_t;
+typedef struct {
+	sys_dlist_t waitq;
+} _wait_q_t;
+
+#define _WAIT_Q_INIT(wait_q) { SYS_DLIST_STATIC_INIT(&(wait_q)->waitq) }
 
 #ifdef CONFIG_OBJECT_TRACING
 #define _OBJECT_TRACING_NEXT_PTR(type) struct type *__next
@@ -1245,7 +1249,7 @@ struct k_timer {
 	.timeout.wait_q = NULL, \
 	.timeout.thread = NULL, \
 	.timeout.func = _timer_expiration_handler, \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.expiry_fn = expiry, \
 	.stop_fn = stop, \
 	.status = 0, \
@@ -1587,7 +1591,7 @@ struct k_queue {
 #define _K_QUEUE_INITIALIZER(obj) \
 	{ \
 	.data_q = SYS_SLIST_STATIC_INIT(&obj.data_q), \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	_POLL_EVENT_OBJ_INIT(obj) \
 	_OBJECT_TRACING_INIT \
 	}
@@ -2098,7 +2102,7 @@ struct k_stack {
 
 #define _K_STACK_INITIALIZER(obj, stack_buffer, stack_num_entries) \
 	{ \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q),	\
 	.base = stack_buffer, \
 	.next = stack_buffer, \
 	.top = stack_buffer + stack_num_entries, \
@@ -2507,7 +2511,7 @@ struct k_mutex {
 
 #define _K_MUTEX_INITIALIZER(obj) \
 	{ \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.owner = NULL, \
 	.lock_count = 0, \
 	.owner_orig_prio = K_LOWEST_THREAD_PRIO, \
@@ -2608,7 +2612,7 @@ struct k_sem {
 
 #define _K_SEM_INITIALIZER(obj, initial_count, count_limit) \
 	{ \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.count = initial_count, \
 	.limit = count_limit, \
 	_POLL_EVENT_OBJ_INIT(obj) \
@@ -2892,7 +2896,7 @@ struct k_msgq {
 
 #define _K_MSGQ_INITIALIZER(obj, q_buffer, q_msg_size, q_max_msgs) \
 	{ \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.max_msgs = q_max_msgs, \
 	.msg_size = q_msg_size, \
 	.buffer_start = q_buffer, \
@@ -3135,8 +3139,8 @@ struct k_mbox {
 
 #define _K_MBOX_INITIALIZER(obj) \
 	{ \
-	.tx_msg_queue = SYS_DLIST_STATIC_INIT(&obj.tx_msg_queue), \
-	.rx_msg_queue = SYS_DLIST_STATIC_INIT(&obj.rx_msg_queue), \
+	.tx_msg_queue = _WAIT_Q_INIT(&obj.tx_msg_queue), \
+	.rx_msg_queue = _WAIT_Q_INIT(&obj.rx_msg_queue), \
 	_OBJECT_TRACING_INIT \
 	}
 
@@ -3311,8 +3315,8 @@ struct k_pipe {
 	.bytes_used = 0,                                              \
 	.read_index = 0,                                              \
 	.write_index = 0,                                             \
-	.wait_q.writers = SYS_DLIST_STATIC_INIT(&obj.wait_q.writers), \
-	.wait_q.readers = SYS_DLIST_STATIC_INIT(&obj.wait_q.readers), \
+	.wait_q.writers = _WAIT_Q_INIT(&obj.wait_q.writers), \
+	.wait_q.readers = _WAIT_Q_INIT(&obj.wait_q.readers), \
 	_OBJECT_TRACING_INIT                            \
 	}
 
@@ -3446,7 +3450,7 @@ struct k_mem_slab {
 #define _K_MEM_SLAB_INITIALIZER(obj, slab_buffer, slab_block_size, \
 			       slab_num_blocks) \
 	{ \
-	.wait_q = SYS_DLIST_STATIC_INIT(&obj.wait_q), \
+	.wait_q = _WAIT_Q_INIT(&obj.wait_q), \
 	.num_blocks = slab_num_blocks, \
 	.block_size = slab_block_size, \
 	.buffer = slab_buffer, \
