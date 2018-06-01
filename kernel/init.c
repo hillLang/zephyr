@@ -264,6 +264,7 @@ static void init_idle_thread(struct k_thread *thr, k_thread_stack_t *stack)
 	_setup_new_thread(thr, stack,
 			  IDLE_STACK_SIZE, idle, NULL, NULL, NULL,
 			  K_LOWEST_THREAD_PRIO, K_ESSENTIAL);
+	thr->base.ANDY_runnable = 1;
 	_mark_thread_as_started(thr);
 }
 #endif
@@ -294,6 +295,7 @@ static void prepare_multithreading(struct k_thread *dummy_thread)
 	 */
 
 	_current = dummy_thread;
+	dummy_thread->base.ANDY_runnable = 1;
 
 	dummy_thread->base.user_options = K_ESSENTIAL;
 	dummy_thread->base.thread_state = _THREAD_DUMMY;

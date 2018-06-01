@@ -68,6 +68,11 @@ static inline unsigned int _Swap(unsigned int key)
 		_smp_release_global_lock(new_thread);
 #endif
 
+		__ASSERT_NO_MSG(!_is_thread_timeout_active(new_thread));
+		__ASSERT_NO_MSG(_current_cpu->idle_thread->base.ANDY_runnable);
+		__ASSERT_NO_MSG(new_thread->base.ANDY_runnable);
+		__ASSERT_NO_MSG(!_is_thread_prevented_from_running(new_thread));
+
 		_current = new_thread;
 		_arch_switch(new_thread->switch_handle,
 			     &old_thread->switch_handle);

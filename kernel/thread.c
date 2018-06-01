@@ -296,6 +296,9 @@ void _setup_new_thread(struct k_thread *new_thread,
 {
 	stack_size = adjust_stack_size(stack_size);
 
+	memset(new_thread, 0, sizeof(*new_thread));
+
+	new_thread->base.ANDY_runnable = 0;
 	_new_thread(new_thread, stack, stack_size, entry, p1, p2, p3,
 		    prio, options);
 #ifdef CONFIG_USERSPACE

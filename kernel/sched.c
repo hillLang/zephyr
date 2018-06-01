@@ -154,8 +154,11 @@ static struct k_thread *next_up(void)
 	 * which makes this choice simple.
 	 */
 	struct k_thread *th = _priq_run_best(&_kernel.ready_q.runq);
+	__ASSERT_NO_MSG(!th || th->base.ANDY_runnable);
 
-	return th ? th : _current_cpu->idle_thread;
+	struct k_thread *ret = th ? th : _current_cpu->idle_thread;
+	__ASSERT_NO_MSG(ret->base.ANDY_runnable);
+	return ret;
 #else
 
 	/* Under SMP, the "cache" mechanism for selecting the next
@@ -207,6 +210,7 @@ static void update_cache(int preempt_ok)
 {
 #ifndef CONFIG_SMP
 	struct k_thread *th = next_up();
+	__ASSERT(th->base.ANDY_runnable, "nu %p cur %p\n", _kernel.ready_q.cache, _current);
 
 	if (should_preempt(th, preempt_ok)) {
 		_kernel.ready_q.cache = th;
@@ -214,6 +218,9 @@ static void update_cache(int preempt_ok)
 		_kernel.ready_q.cache = _current;
 	}
 
+	__ASSERT_NO_MSG(!_is_thread_timeout_active(_kernel.ready_q.cache));
+	__ASSERT_NO_MSG(!_is_thread_prevented_from_running(_kernel.ready_q.cache));
+	__ASSERT(_kernel.ready_q.cache->base.ANDY_runnable, "cache %p cur %p\n", _kernel.ready_q.cache, _current);
 #else
 	/* The way this works is that the CPU record keeps its
 	 * "cooperative swapping is OK" flag until the next reschedule
@@ -225,8 +232,13 @@ static void update_cache(int preempt_ok)
 #endif
 }
 
+static inline int _is_dummy(struct k_thread *th) { return th->base.thread_state & _THREAD_DUMMY; }
+
 void _add_thread_to_ready_q(struct k_thread *thread)
 {
+	__ASSERT_NO_MSG(!_is_dummy(thread));
+	__ASSERT(!thread->base.ANDY_runnable, "TH %p\n", thread);
+	thread->base.ANDY_runnable = 1;
 	LOCKED(&sched_lock) {
 		_priq_run_add(&_kernel.ready_q.runq, thread);
 		_mark_thread_as_queued(thread);
@@ -236,6 +248,8 @@ void _add_thread_to_ready_q(struct k_thread *thread)
 
 void _move_thread_to_end_of_prio_q(struct k_thread *thread)
 {
+	__ASSERT_NO_MSG(!_is_dummy(thread));
+	__ASSERT_NO_MSG(thread->base.ANDY_runnable);
 	LOCKED(&sched_lock) {
 		_priq_run_remove(&_kernel.ready_q.runq, thread);
 		_priq_run_add(&_kernel.ready_q.runq, thread);
@@ -246,6 +260,10 @@ void _move_thread_to_end_of_prio_q(struct k_thread *thread)
 
 void _remove_thread_from_ready_q(struct k_thread *thread)
 {
+	__ASSERT_NO_MSG(!_is_dummy(thread));
+	__ASSERT_NO_MSG(thread->base.ANDY_runnable);
+	__ASSERT_NO_MSG(!_is_idle(thread));
+	thread->base.ANDY_runnable = 0;
 	LOCKED(&sched_lock) {
 		if (_is_thread_queued(thread)) {
 			_priq_run_remove(&_kernel.ready_q.runq, thread);
@@ -257,7 +275,9 @@ void _remove_thread_from_ready_q(struct k_thread *thread)
 
 static void pend(struct k_thread *thread, _wait_q_t *wait_q, s32_t timeout)
 {
-	_remove_thread_from_ready_q(thread);
+	if (!(thread->base.thread_state & _THREAD_DUMMY)) {
+		_remove_thread_from_ready_q(thread);
+	}
 	_mark_thread_as_pending(thread);
 
 	/* The timeout handling is currently synchronized external to
@@ -366,6 +386,7 @@ void _thread_priority_set(struct k_thread *thread, int prio)
 		need_sched = _is_thread_ready(thread);
 
 		if (need_sched) {
+			__ASSERT_NO_MSG(thread->base.ANDY_runnable);
 			_priq_run_remove(&_kernel.ready_q.runq, thread);
 			thread->base.prio = prio;
 			_priq_run_add(&_kernel.ready_q.runq, thread);
@@ -589,6 +610,7 @@ int _is_thread_time_slicing(struct k_thread *thread)
 
 	LOCKED(&sched_lock) {
 		struct k_thread *next = _priq_run_best(&_kernel.ready_q.runq);
+		__ASSERT_NO_MSG(!next || next->base.ANDY_runnable);
 
 		if (next) {
 			ret = thread->base.prio == next->base.prio;
@@ -728,6 +750,7 @@ void _impl_k_yield(void)
 
 	if (!_is_idle(_current)) {
 		LOCKED(&sched_lock) {
+			__ASSERT_NO_MSG(_current->base.ANDY_runnable);
 			_priq_run_remove(&_kernel.ready_q.runq, _current);
 			_priq_run_add(&_kernel.ready_q.runq, _current);
 			update_cache(1);

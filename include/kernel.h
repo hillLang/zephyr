@@ -470,6 +470,8 @@ struct _thread_base {
 	int prio_deadline;
 #endif
 
+	int ANDY_runnable;
+
 	u32_t order_key;
 
 #ifdef CONFIG_SMP
