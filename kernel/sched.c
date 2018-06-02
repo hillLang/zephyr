@@ -331,6 +331,7 @@ void _unpend_thread_no_timeout(struct k_thread *thread)
 int _pend_current_thread(int key, _wait_q_t *wait_q, s32_t timeout)
 {
 	pend(_current, wait_q, timeout);
+	__ASSERT_NO_MSG(_is_thread_prevented_from_running(_current));
 	return _Swap(key);
 }
 
@@ -750,16 +751,8 @@ Z_SYSCALL_HANDLER0_SIMPLE_VOID(k_yield);
 void _impl_k_sleep(s32_t duration)
 {
 #ifdef CONFIG_MULTITHREADING
-	/* volatile to guarantee that irq_lock() is executed after ticks is
-	 * populated
-	 */
-	volatile s32_t ticks;
-	unsigned int key;
-
 	__ASSERT(!_is_in_isr(), "");
 	__ASSERT(duration != K_FOREVER, "");
-
-	K_DEBUG("thread %p for %d ns\n", _current, duration);
 
 	/* wait of 0 ms is treated as a 'yield' */
 	if (duration == 0) {
@@ -767,13 +760,7 @@ void _impl_k_sleep(s32_t duration)
 		return;
 	}
 
-	ticks = _TICK_ALIGN + _ms_to_ticks(duration);
-	key = irq_lock();
-
-	_remove_thread_from_ready_q(_current);
-	_add_thread_timeout(_current, NULL, ticks);
-
-	_Swap(key);
+	_pend_current_thread(irq_lock(), NULL, duration);
 #endif
 }
 

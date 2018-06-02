@@ -68,8 +68,8 @@ _init_thread_timeout(struct _thread_base *thread_base)
 static inline void _unpend_thread_timing_out(struct k_thread *thread,
 					     struct _timeout *timeout_obj)
 {
+	_unpend_thread_no_timeout(thread);
 	if (timeout_obj->wait_q) {
-		_unpend_thread_no_timeout(thread);
 		thread->base.timeout.wait_q = NULL;
 	}
 }
