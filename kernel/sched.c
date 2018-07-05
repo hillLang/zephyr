@@ -391,13 +391,7 @@ int _reschedule(int key)
 		goto noswap;
 	}
 
-#ifdef CONFIG_SMP
 	return _Swap(key);
-#else
-	if (_get_next_ready_thread() != _current) {
-		return _Swap(key);
-	}
-#endif
 
  noswap:
 	irq_unlock(key);
@@ -775,13 +769,7 @@ void _impl_k_yield(void)
 		}
 	}
 
-#ifdef CONFIG_SMP
 	_Swap(irq_lock());
-#else
-	if (_get_next_ready_thread() != _current) {
-		_Swap(irq_lock());
-	}
-#endif
 }
 
 #ifdef CONFIG_USERSPACE
