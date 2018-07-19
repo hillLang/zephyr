@@ -485,7 +485,7 @@ void _impl_k_thread_suspend(struct k_thread *thread)
 	_k_thread_single_suspend(thread);
 
 	if (thread == _current) {
-		_Swap(key);
+		_reschedule(key);
 	} else {
 		irq_unlock(key);
 	}
