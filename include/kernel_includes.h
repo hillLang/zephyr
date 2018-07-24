@@ -33,5 +33,6 @@
 #include <misc/printk.h>
 #include <arch/cpu.h>
 #include <misc/rb.h>
+#include <spinlock.h>
 
 #endif /* _KERNEL_INCLUDES__H */

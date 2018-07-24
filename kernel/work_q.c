@@ -78,7 +78,7 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 				   struct k_delayed_work *work,
 				   s32_t delay)
 {
-	int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&work_q->lock);
 	int err;
 
 	/* Work cannot be active in multiple queues */
@@ -110,24 +110,23 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 	err = 0;
 
 done:
-	irq_unlock(key);
+	k_spin_unlock(&work_q->lock, key);
 
 	return err;
 }
 
 int k_delayed_work_cancel(struct k_delayed_work *work)
 {
-	int key = irq_lock();
-
 	if (!work->work_q) {
-		irq_unlock(key);
 		return -EINVAL;
 	}
+
+	k_spinlock_key_t key = k_spin_lock(&work->work_q->lock);
 
 	if (k_work_pending(&work->work)) {
 		/* Remove from the queue if already submitted */
 		if (!k_queue_remove(&work->work_q->queue, &work->work)) {
-			irq_unlock(key);
+			k_spin_unlock(&work->work_q->lock, key);
 			return -EINVAL;
 		}
 	} else {
@@ -138,7 +137,7 @@ int k_delayed_work_cancel(struct k_delayed_work *work)
 	work->work_q = NULL;
 
 	atomic_clear_bit(work->work.flags, K_WORK_STATE_PENDING);
-	irq_unlock(key);
+	k_spin_unlock(&work->work_q->lock, key);
 
 	return 0;
 }
