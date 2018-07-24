@@ -31,6 +31,15 @@
 extern struct k_sem _k_sem_list_start[];
 extern struct k_sem _k_sem_list_end[];
 
+/* We use a system-wide lock to synchronize semaphores, which has
+ * unfortunate performance impact vs. using a per-object lock
+ * (semaphores are *very* widely used).  But per-object locks require
+ * significant extra RAM.  A properly spin-aware semaphore
+ * implementation would spin on atomic access to the count variable,
+ * and not a spinlock per se.  Useful optimization for the future...
+ */
+static struct k_spinlock lock;
+
 #ifdef CONFIG_OBJECT_TRACING
 
 struct k_sem *_trace_list_k_sem;
@@ -132,10 +141,10 @@ void _sem_give_non_preemptible(struct k_sem *sem)
 
 void _impl_k_sem_give(struct k_sem *sem)
 {
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	do_sem_give(sem);
-	_reschedule_irqlock(key);
+	_reschedule(&lock, key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -146,20 +155,20 @@ int _impl_k_sem_take(struct k_sem *sem, s32_t timeout)
 {
 	__ASSERT(!_is_in_isr() || timeout == K_NO_WAIT, "");
 
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	if (likely(sem->count > 0)) {
 		sem->count--;
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 		return 0;
 	}
 
 	if (timeout == K_NO_WAIT) {
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 		return -EBUSY;
 	}
 
-	return _pend_curr_irqlock(key, &sem->wait_q, timeout);
+	return _pend_curr(&lock, key, &sem->wait_q, timeout);
 }
 
 #ifdef CONFIG_USERSPACE
