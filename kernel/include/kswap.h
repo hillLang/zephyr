@@ -105,6 +105,14 @@ static inline unsigned int _Swap_irqlock(unsigned int key)
 	return __Swap(key, NULL, 0);
 }
 
+static inline unsigned int _Swap_unlocked(void)
+{
+	struct k_spinlock lock = {};
+	k_spinlock_key_t key = k_spin_lock(&lock);
+
+	return _Swap(&lock, key);
+}
+
 #else /* !CONFIG_USE_SWITCH */
 
 extern unsigned int __swap(unsigned int key);
@@ -122,6 +130,12 @@ static inline unsigned int _Swap(struct k_spinlock *lock, k_spinlock_key_t key)
 	ARG_UNUSED(lock);
 	return _Swap_irqlock(key.key);
 }
+
+static inline unsigned int _Swap_unlocked(void)
+{
+	return _Swap_irqlock(_arch_irq_lock());
+}
+
 #endif
 
 #endif /* _KSWAP_H */

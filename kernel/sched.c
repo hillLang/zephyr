@@ -380,7 +380,7 @@ void _thread_priority_set(struct k_thread *thread, int prio)
 	}
 
 	if (need_sched) {
-		_reschedule_irqlock(irq_lock());
+		_reschedule_unlocked();
 	}
 }
 
@@ -438,7 +438,7 @@ void k_sched_unlock(void)
 	K_DEBUG("scheduler unlocked (%p:%d)\n",
 		_current, _current->base.sched_locked);
 
-	_reschedule_irqlock(irq_lock());
+	_reschedule_unlocked();
 #endif
 }
 
@@ -788,7 +788,7 @@ void _impl_k_yield(void)
 		}
 	}
 
-	_Swap_irqlock(irq_lock());
+	_Swap_unlocked();
 }
 
 #ifdef CONFIG_USERSPACE

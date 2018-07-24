@@ -55,6 +55,22 @@ int _pend_curr(struct k_spinlock *lock, k_spinlock_key_t key,
 	       _wait_q_t *wait_q, s32_t timeout);
 int _reschedule(struct k_spinlock *lock, k_spinlock_key_t key);
 
+static inline int _pend_curr_unlocked(_wait_q_t *wait_q, s32_t timeout)
+{
+	struct k_spinlock lock = {};
+	k_spinlock_key_t key = k_spin_lock(&lock);
+
+	return _pend_curr(&lock, key, wait_q, timeout);
+}
+
+static inline int _reschedule_unlocked(void)
+{
+	struct k_spinlock lock = {};
+	k_spinlock_key_t key = k_spin_lock(&lock);
+
+	return _reschedule(&lock, key);
+}
+
 /* find which one is the next thread to run */
 /* must be called with interrupts locked */
 #ifdef CONFIG_SMP
