@@ -39,9 +39,9 @@ void _move_thread_to_end_of_prio_q(struct k_thread *thread);
 void _remove_thread_from_ready_q(struct k_thread *thread);
 int _is_thread_time_slicing(struct k_thread *thread);
 void _unpend_thread_no_timeout(struct k_thread *thread);
-int _pend_current_thread(int key, _wait_q_t *wait_q, s32_t timeout);
+int _pend_curr_irqlock(int key, _wait_q_t *wait_q, s32_t timeout);
 void _pend_thread(struct k_thread *thread, _wait_q_t *wait_q, s32_t timeout);
-int _reschedule(int key);
+int _reschedule_irqlock(int key);
 struct k_thread *_unpend_first_thread(_wait_q_t *wait_q);
 void _unpend_thread(struct k_thread *thread);
 int _unpend_all(_wait_q_t *wait_q);
@@ -50,6 +50,10 @@ void *_get_next_switch_handle(void *interrupted);
 struct k_thread *_find_first_thread_to_unpend(_wait_q_t *wait_q,
 					      struct k_thread *from);
 void idle(void *a, void *b, void *c);
+
+int _pend_curr(struct k_spinlock *lock, k_spinlock_key_t key,
+	       _wait_q_t *wait_q, s32_t timeout);
+int _reschedule(struct k_spinlock *lock, k_spinlock_key_t key);
 
 /* find which one is the next thread to run */
 /* must be called with interrupts locked */
@@ -254,7 +258,7 @@ static inline void _sched_lock(void)
 #endif
 }
 
-static ALWAYS_INLINE void _sched_unlock_no_reschedule(void)
+static ALWAYS_INLINE void _sched_unlock_no_reschedule_irqlock(void)
 {
 #ifdef CONFIG_PREEMPT_ENABLED
 	__ASSERT(!_is_in_isr(), "");

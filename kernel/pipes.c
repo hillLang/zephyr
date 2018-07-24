@@ -536,10 +536,10 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 		 * manipulating the writers wait_q.
 		 */
 		key = irq_lock();
-		_sched_unlock_no_reschedule();
+		_sched_unlock_no_reschedule_irqlock();
 		_pend_thread((struct k_thread *) &async_desc->thread,
 			     &pipe->wait_q.writers, K_FOREVER);
-		_reschedule(key);
+		_reschedule_irqlock(key);
 		return 0;
 	}
 #endif
@@ -556,8 +556,8 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 		 * manipulating the writers wait_q.
 		 */
 		key = irq_lock();
-		_sched_unlock_no_reschedule();
-		_pend_current_thread(key, &pipe->wait_q.writers, timeout);
+		_sched_unlock_no_reschedule_irqlock();
+		_pend_curr_irqlock(key, &pipe->wait_q.writers, timeout);
 	} else {
 		k_sched_unlock();
 	}
@@ -698,8 +698,8 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 	if (timeout != K_NO_WAIT) {
 		_current->base.swap_data = &pipe_desc;
 		key = irq_lock();
-		_sched_unlock_no_reschedule();
-		_pend_current_thread(key, &pipe->wait_q.readers, timeout);
+		_sched_unlock_no_reschedule_irqlock();
+		_pend_curr_irqlock(key, &pipe->wait_q.readers, timeout);
 	} else {
 		k_sched_unlock();
 	}

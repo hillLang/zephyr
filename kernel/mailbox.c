@@ -218,7 +218,7 @@ static void mbox_message_dispose(struct k_mbox_msg *rx_msg)
 	_set_thread_return_value(sending_thread, 0);
 	_mark_thread_as_not_pending(sending_thread);
 	_ready_thread(sending_thread);
-	_reschedule(key);
+	_reschedule_irqlock(key);
 }
 
 /**
@@ -273,7 +273,7 @@ static int mbox_message_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
 			 * until the receiver consumes the message
 			 */
 			if (sending_thread->base.thread_state & _THREAD_DUMMY) {
-				_reschedule(key);
+				_reschedule_irqlock(key);
 				return 0;
 			}
 #endif
@@ -282,7 +282,7 @@ static int mbox_message_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
 			 * synchronous send: pend current thread (unqueued)
 			 * until the receiver consumes the message
 			 */
-			return _pend_current_thread(key, NULL, K_FOREVER);
+			return _pend_curr_irqlock(key, NULL, K_FOREVER);
 
 		}
 	}
@@ -303,7 +303,7 @@ static int mbox_message_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
 #endif
 
 	/* synchronous send: sender waits on tx queue for receiver or timeout */
-	return _pend_current_thread(key, &mbox->tx_msg_queue, timeout);
+	return _pend_curr_irqlock(key, &mbox->tx_msg_queue, timeout);
 }
 
 int k_mbox_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg, s32_t timeout)
@@ -455,7 +455,7 @@ int k_mbox_get(struct k_mbox *mbox, struct k_mbox_msg *rx_msg, void *buffer,
 
 	/* wait until a matching sender appears or a timeout occurs */
 	_current->base.swap_data = rx_msg;
-	result = _pend_current_thread(key, &mbox->rx_msg_queue, timeout);
+	result = _pend_curr_irqlock(key, &mbox->rx_msg_queue, timeout);
 
 	/* consume message data immediately, if needed */
 	if (result == 0) {

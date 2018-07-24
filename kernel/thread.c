@@ -219,7 +219,7 @@ void _impl_k_thread_start(struct k_thread *thread)
 
 	_mark_thread_as_started(thread);
 	_ready_thread(thread);
-	_reschedule(key);
+	_reschedule_irqlock(key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -485,7 +485,7 @@ void _impl_k_thread_suspend(struct k_thread *thread)
 	_k_thread_single_suspend(thread);
 
 	if (thread == _current) {
-		_reschedule(key);
+		_reschedule_irqlock(key);
 	} else {
 		irq_unlock(key);
 	}
@@ -507,7 +507,7 @@ void _impl_k_thread_resume(struct k_thread *thread)
 
 	_k_thread_single_resume(thread);
 
-	_reschedule(key);
+	_reschedule_irqlock(key);
 }
 
 #ifdef CONFIG_USERSPACE

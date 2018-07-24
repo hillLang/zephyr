@@ -91,7 +91,7 @@ int k_mem_pool_alloc(struct k_mem_pool *p, struct k_mem_block *block,
 			return ret;
 		}
 
-		_pend_current_thread(irq_lock(), &p->wait_q, timeout);
+		_pend_curr_irqlock(irq_lock(), &p->wait_q, timeout);
 
 		if (timeout != K_FOREVER) {
 			timeout = end - _tick_get();
@@ -120,7 +120,7 @@ void k_mem_pool_free_id(struct k_mem_block_id *id)
 	need_sched = _unpend_all(&p->wait_q);
 
 	if (need_sched && !_is_in_isr()) {
-		_reschedule(key);
+		_reschedule_irqlock(key);
 	} else {
 		irq_unlock(key);
 	}

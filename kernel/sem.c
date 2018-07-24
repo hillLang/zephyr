@@ -135,7 +135,7 @@ void _impl_k_sem_give(struct k_sem *sem)
 	unsigned int key = irq_lock();
 
 	do_sem_give(sem);
-	_reschedule(key);
+	_reschedule_irqlock(key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -159,7 +159,7 @@ int _impl_k_sem_take(struct k_sem *sem, s32_t timeout)
 		return -EBUSY;
 	}
 
-	return _pend_current_thread(key, &sem->wait_q, timeout);
+	return _pend_curr_irqlock(key, &sem->wait_q, timeout);
 }
 
 #ifdef CONFIG_USERSPACE

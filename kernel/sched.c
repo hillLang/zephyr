@@ -325,10 +325,17 @@ void _unpend_thread_no_timeout(struct k_thread *thread)
 #endif
 }
 
-int _pend_current_thread(int key, _wait_q_t *wait_q, s32_t timeout)
+int _pend_curr_irqlock(int key, _wait_q_t *wait_q, s32_t timeout)
 {
 	pend(_current, wait_q, timeout);
 	return _Swap_irqlock(key);
+}
+
+int _pend_curr(struct k_spinlock *lock, k_spinlock_key_t key,
+	       _wait_q_t *wait_q, s32_t timeout)
+{
+	pend(_current, wait_q, timeout);
+	return _Swap(lock, key);
 }
 
 struct k_thread *_unpend_first_thread(_wait_q_t *wait_q)
@@ -373,28 +380,40 @@ void _thread_priority_set(struct k_thread *thread, int prio)
 	}
 
 	if (need_sched) {
-		_reschedule(irq_lock());
+		_reschedule_irqlock(irq_lock());
 	}
 }
 
-int _reschedule(int key)
+static int resched_can_swap(void)
 {
 #ifdef CONFIG_SMP
 	if (!_current_cpu->swap_ok) {
-		goto noswap;
+		return 0;
 	}
 
 	_current_cpu->swap_ok = 0;
 #endif
 
-	if (_is_in_isr()) {
-		goto noswap;
+	return !_is_in_isr();
+}
+
+int _reschedule_irqlock(int key)
+{
+	if (resched_can_swap()) {
+		return _Swap_irqlock(key);
 	}
 
-	return _Swap_irqlock(key);
-
- noswap:
 	irq_unlock(key);
+	return 0;
+}
+
+int _reschedule(struct k_spinlock *lock, k_spinlock_key_t key)
+{
+	if (resched_can_swap()) {
+		return _Swap(lock, key);
+	}
+
+ 	k_spin_unlock(lock, key);
 	return 0;
 }
 
@@ -419,7 +438,7 @@ void k_sched_unlock(void)
 	K_DEBUG("scheduler unlocked (%p:%d)\n",
 		_current, _current->base.sched_locked);
 
-	_reschedule(irq_lock());
+	_reschedule_irqlock(irq_lock());
 #endif
 }
 
@@ -840,7 +859,7 @@ void _impl_k_wakeup(k_tid_t thread)
 	if (_is_in_isr()) {
 		irq_unlock(key);
 	} else {
-		_reschedule(key);
+		_reschedule_irqlock(key);
 	}
 }
 
