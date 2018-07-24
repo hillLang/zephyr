@@ -8,6 +8,22 @@
 
 #include <atomic.h>
 
+/* These stubs aren't provided by the mocking framework, and I can't
+ * find a proper place to put them as mocking seems not to have a
+ * proper "arch" layer.
+ */
+#ifdef ZTEST_UNITTEST
+static inline int _arch_irq_lock(void)
+{
+	return 0;
+}
+
+static inline void _arch_irq_unlock(int key)
+{
+	ARG_UNUSED(key);
+}
+#endif
+
 struct k_spinlock_key {
 	int key;
 };
@@ -26,6 +42,8 @@ struct k_spinlock {
 static inline k_spinlock_key_t k_spin_lock(struct k_spinlock *l)
 {
 	k_spinlock_key_t k;
+
+	ARG_UNUSED(l);
 
 	/* Note that we need to use the underlying arch-specific lock
 	 * implementation.  The "irq_lock()" API in SMP context is
