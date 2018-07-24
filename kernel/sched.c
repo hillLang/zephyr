@@ -328,7 +328,7 @@ void _unpend_thread_no_timeout(struct k_thread *thread)
 int _pend_current_thread(int key, _wait_q_t *wait_q, s32_t timeout)
 {
 	pend(_current, wait_q, timeout);
-	return _Swap(key);
+	return _Swap_irqlock(key);
 }
 
 struct k_thread *_unpend_first_thread(_wait_q_t *wait_q)
@@ -391,7 +391,7 @@ int _reschedule(int key)
 		goto noswap;
 	}
 
-	return _Swap(key);
+	return _Swap_irqlock(key);
 
  noswap:
 	irq_unlock(key);
@@ -769,7 +769,7 @@ void _impl_k_yield(void)
 		}
 	}
 
-	_Swap(irq_lock());
+	_Swap_irqlock(irq_lock());
 }
 
 #ifdef CONFIG_USERSPACE
@@ -802,7 +802,7 @@ void _impl_k_sleep(s32_t duration)
 	_remove_thread_from_ready_q(_current);
 	_add_thread_timeout(_current, NULL, ticks);
 
-	_Swap(key);
+	_Swap_irqlock(key);
 #endif
 }
 

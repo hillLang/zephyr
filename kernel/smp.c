@@ -86,7 +86,7 @@ static void smp_init_top(int key, void *arg)
 	_arch_curr_cpu()->current = &dummy_thread;
 	int k = irq_lock();
 	smp_timer_init();
-	_Swap(k);
+	_Swap_irqlock(k);
 
 	CODE_UNREACHABLE;
 }

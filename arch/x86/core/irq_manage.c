@@ -96,7 +96,7 @@ void _arch_isr_direct_footer(int swap)
 			:
 			: "memory"
 			);
-		_Swap(flags);
+		_Swap_irqlock(flags);
 	}
 }
 

@@ -8,6 +8,7 @@
 
 #include <ksched.h>
 #include <kernel_arch_func.h>
+#include <spinlock.h>
 
 #ifdef CONFIG_TIMESLICING
 extern void _update_time_slice_before_swap(void);
@@ -41,10 +42,14 @@ void _smp_release_global_lock(struct k_thread *thread);
  * Needed for SMP, where the scheduler requires spinlocking that we
  * don't want to have to do in per-architecture assembly.
  */
-static inline unsigned int _Swap(unsigned int key)
+static ALWAYS_INLINE unsigned int __Swap(unsigned int key,
+					 struct k_spinlock *lock,
+					 int is_spinlock)
 {
 	struct k_thread *new_thread, *old_thread;
 	int ret = 0;
+
+	ARG_UNUSED(lock);
 
 	old_thread = _current;
 
@@ -65,7 +70,13 @@ static inline unsigned int _Swap(unsigned int key)
 
 		new_thread->base.cpu = _arch_curr_cpu()->id;
 
-		_smp_release_global_lock(new_thread);
+		if (!is_spinlock) {
+			_smp_release_global_lock(new_thread);
+		} else {
+			k_spinlock_key_t k = { .key = key };
+
+			k_spin_release(lock,  k);
+		}
 #endif
 
 		_current = new_thread;
@@ -75,21 +86,41 @@ static inline unsigned int _Swap(unsigned int key)
 		ret = _current->swap_retval;
 	}
 
-	irq_unlock(key);
+	if (is_spinlock) {
+		_arch_irq_unlock(key);
+	} else {
+		irq_unlock(key);
+	}
 
 	return ret;
+}
+
+static inline unsigned int _Swap(struct k_spinlock *lock, k_spinlock_key_t key)
+{
+	return __Swap(key.key, lock, 1);
+}
+
+static inline unsigned int _Swap_irqlock(unsigned int key)
+{
+	return __Swap(key, NULL, 0);
 }
 
 #else /* !CONFIG_USE_SWITCH */
 
 extern unsigned int __swap(unsigned int key);
 
-static inline unsigned int _Swap(unsigned int key)
+static inline unsigned int _Swap_irqlock(unsigned int key)
 {
 	_check_stack_sentinel();
 	_update_time_slice_before_swap();
 
 	return __swap(key);
+}
+
+static inline unsigned int _Swap(struct k_spinlock *lock, k_spinlock_key_t key)
+{
+	ARG_UNUSED(lock);
+	return _Swap_irqlock(key.key);
 }
 #endif
 

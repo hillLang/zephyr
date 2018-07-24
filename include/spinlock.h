@@ -66,4 +66,14 @@ static inline void k_spin_unlock(struct k_spinlock *l, k_spinlock_key_t key)
 	_arch_irq_unlock(key.key);
 }
 
+/* Internal function: releases the lock, but leaves local interrupts
+ * disabled
+ */
+#ifdef CONFIG_SMP
+static inline void k_spin_release(struct k_spinlock *l)
+{
+	atomic_clear(&l->locked);
+}
+#endif
+
 #endif /* _SPINLOCK_H */
