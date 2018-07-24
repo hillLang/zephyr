@@ -13,6 +13,7 @@
 #include <wait_q.h>
 #include <drivers/system_timer.h>
 #include <syscall_handler.h>
+#include <spinlock.h>
 
 #ifdef CONFIG_SYS_CLOCK_EXISTS
 #ifdef _NON_OPTIMIZED_TICKS_PER_SEC
@@ -40,6 +41,8 @@ int sys_clock_hw_cycles_per_sec;
 s32_t _sys_idle_elapsed_ticks = 1;
 
 volatile u64_t _sys_clock_tick_count;
+
+static struct k_spinlock lock;
 
 #ifdef CONFIG_TICKLESS_KERNEL
 /*
@@ -104,14 +107,14 @@ s64_t _tick_get(void)
 	 * so we have to lock the timer interrupt that causes change of
 	 * _sys_clock_tick_count
 	 */
-	unsigned int imask = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 #ifdef CONFIG_TICKLESS_KERNEL
 	tmp_sys_clock_tick_count = _get_elapsed_clock_time();
 #else
 	tmp_sys_clock_tick_count = _sys_clock_tick_count;
 #endif
-	irq_unlock(imask);
+	k_spin_unlock(&lock, key);
 	return tmp_sys_clock_tick_count;
 }
 FUNC_ALIAS(_tick_get, sys_tick_get, s64_t);
@@ -172,12 +175,12 @@ volatile int _handling_timeouts;
 static inline void handle_timeouts(s32_t ticks)
 {
 	sys_dlist_t expired;
-	unsigned int key;
+	k_spinlock_key_t key;
 
 	/* init before locking interrupts */
 	sys_dlist_init(&expired);
 
-	key = irq_lock();
+	key = k_spin_lock(&lock);
 
 	sys_dnode_t *next = sys_dlist_peek_head(&_timeout_q);
 	struct _timeout *timeout = (struct _timeout *)next;
@@ -186,7 +189,7 @@ static inline void handle_timeouts(s32_t ticks)
 		timeout, timeout ? timeout->delta_ticks_from_prev : -2112);
 
 	if (!next) {
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 		return;
 	}
 
@@ -245,13 +248,13 @@ static inline void handle_timeouts(s32_t ticks)
 			break;
 		}
 
-		irq_unlock(key);
-		key = irq_lock();
+		k_spin_unlock(&lock, key);
+		key = k_spin_lock(&lock);
 
 		timeout = (struct _timeout *)next;
 	}
 
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 
 	_handle_expired_timeouts(&expired);
 
@@ -287,14 +290,8 @@ static void handle_time_slicing(s32_t ticks)
 
 	_time_slice_elapsed += __ticks_to_ms(ticks);
 	if (_time_slice_elapsed >= _time_slice_duration) {
-
-		unsigned int key;
-
 		_time_slice_elapsed = 0;
-
-		key = irq_lock();
 		_move_thread_to_end_of_prio_q(_current);
-		irq_unlock(key);
 	}
 #ifdef CONFIG_TICKLESS_KERNEL
 	next_ts =
@@ -325,14 +322,14 @@ void _nano_sys_clock_tick_announce(s32_t ticks)
 #endif
 
 #ifndef CONFIG_TICKLESS_KERNEL
-	unsigned int  key;
+	k_spinlock_key_t key;
 
 	K_DEBUG("ticks: %d\n", ticks);
 
 	/* 64-bit value, ensure atomic access with irq lock */
-	key = irq_lock();
+	key = k_spin_lock(&lock);
 	_sys_clock_tick_count += ticks;
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 #endif
 	handle_timeouts(ticks);
 
