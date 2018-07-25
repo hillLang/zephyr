@@ -830,26 +830,18 @@ Z_SYSCALL_HANDLER(k_sleep, duration)
 
 void _impl_k_wakeup(k_tid_t thread)
 {
-	int key = irq_lock();
-
 	/* verify first if thread is not waiting on an object */
 	if (_is_thread_pending(thread)) {
-		irq_unlock(key);
 		return;
 	}
 
 	if (_abort_thread_timeout(thread) == _INACTIVE) {
-		irq_unlock(key);
 		return;
 	}
 
 	_ready_thread(thread);
 
-	if (_is_in_isr()) {
-		irq_unlock(key);
-	} else {
-		_reschedule_irqlock(key);
-	}
+	_reschedule_unlocked();
 }
 
 #ifdef CONFIG_USERSPACE
