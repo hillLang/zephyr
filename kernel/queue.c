@@ -84,6 +84,7 @@ SYS_INIT(init_queue_module, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 void _impl_k_queue_init(struct k_queue *queue)
 {
 	sys_sflist_init(&queue->data_q);
+	queue->lock = (struct k_spinlock) {};
 	_waitq_init(&queue->wait_q);
 #if defined(CONFIG_POLL)
 	sys_dlist_init(&queue->poll_events);
@@ -121,7 +122,7 @@ static inline void handle_poll_events(struct k_queue *queue, u32_t state)
 
 void _impl_k_queue_cancel_wait(struct k_queue *queue)
 {
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&queue->lock);
 #if !defined(CONFIG_POLL)
 	struct k_thread *first_pending_thread;
 
@@ -134,7 +135,7 @@ void _impl_k_queue_cancel_wait(struct k_queue *queue)
 	handle_poll_events(queue, K_POLL_STATE_NOT_READY);
 #endif /* !CONFIG_POLL */
 
-	_reschedule_irqlock(key);
+	_reschedule(&queue->lock, key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -145,7 +146,7 @@ Z_SYSCALL_HANDLER1_SIMPLE_VOID(k_queue_cancel_wait, K_OBJ_QUEUE,
 static int queue_insert(struct k_queue *queue, void *prev, void *data,
 			bool alloc)
 {
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&queue->lock);
 #if !defined(CONFIG_POLL)
 	struct k_thread *first_pending_thread;
 
@@ -153,7 +154,7 @@ static int queue_insert(struct k_queue *queue, void *prev, void *data,
 
 	if (first_pending_thread) {
 		prepare_thread_to_run(first_pending_thread, data);
-		_reschedule_irqlock(key);
+		_reschedule(&queue->lock, key);
 		return 0;
 	}
 #endif /* !CONFIG_POLL */
@@ -178,7 +179,7 @@ static int queue_insert(struct k_queue *queue, void *prev, void *data,
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
 #endif /* CONFIG_POLL */
 
-	_reschedule_irqlock(key);
+	_reschedule(&queue->lock, key);
 	return 0;
 }
 
@@ -232,7 +233,7 @@ void k_queue_append_list(struct k_queue *queue, void *head, void *tail)
 {
 	__ASSERT(head && tail, "invalid head or tail");
 
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&queue->lock);
 #if !defined(CONFIG_POLL)
 	struct k_thread *thread;
 
@@ -250,7 +251,7 @@ void k_queue_append_list(struct k_queue *queue, void *head, void *tail)
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
 #endif /* !CONFIG_POLL */
 
-	_reschedule_irqlock(key);
+	_reschedule(&queue->lock, key);
 }
 
 void k_queue_merge_slist(struct k_queue *queue, sys_slist_t *list)
@@ -275,7 +276,7 @@ static void *k_queue_poll(struct k_queue *queue, s32_t timeout)
 {
 	struct k_poll_event event;
 	int err, elapsed = 0, done = 0;
-	unsigned int key;
+	k_spinlock_key_t key;
 	void *val;
 	u32_t start;
 
@@ -295,12 +296,9 @@ static void *k_queue_poll(struct k_queue *queue, s32_t timeout)
 			return NULL;
 		}
 
-		/* sys_sflist_* aren't threadsafe, so must be always protected
-		 * by irq_lock.
-		 */
-		key = irq_lock();
+		key = k_spin_lock(&queue->lock);
 		val = z_queue_node_peek(sys_sflist_get(&queue->data_q), true);
-		irq_unlock(key);
+		k_spin_unlock(&queue->lock, key);
 
 		if (!val && timeout != K_FOREVER) {
 			elapsed = k_uptime_get_32() - start;
@@ -314,32 +312,30 @@ static void *k_queue_poll(struct k_queue *queue, s32_t timeout)
 
 void *_impl_k_queue_get(struct k_queue *queue, s32_t timeout)
 {
-	unsigned int key;
+	k_spinlock_key_t key = k_spin_lock(&queue->lock);
 	void *data;
-
-	key = irq_lock();
 
 	if (likely(!sys_sflist_is_empty(&queue->data_q))) {
 		sys_sfnode_t *node;
 
 		node = sys_sflist_get_not_empty(&queue->data_q);
 		data = z_queue_node_peek(node, true);
-		irq_unlock(key);
+		k_spin_unlock(&queue->lock, key);
 		return data;
 	}
 
 	if (timeout == K_NO_WAIT) {
-		irq_unlock(key);
+		k_spin_unlock(&queue->lock, key);
 		return NULL;
 	}
 
 #if defined(CONFIG_POLL)
-	irq_unlock(key);
+	k_spin_unlock(&queue->lock, key);
 
 	return k_queue_poll(queue, timeout);
 
 #else
-	int ret = _pend_curr_irqlock(key, &queue->wait_q, timeout);
+	int ret = _pend_curr(&queue->lock, key, &queue->wait_q, timeout);
 
 	return ret ? NULL : _current->base.swap_data;
 #endif /* CONFIG_POLL */
