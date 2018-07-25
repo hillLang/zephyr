@@ -16,6 +16,7 @@
 #include <toolchain.h>
 #include <linker/sections.h>
 #include <wait_q.h>
+#include <ksched.h>
 #include <misc/dlist.h>
 #include <init.h>
 #include <syscall_handler.h>
@@ -409,8 +410,6 @@ static int pipe_return_code(size_t min_xfer, size_t bytes_remaining,
  */
 static void pipe_thread_ready(struct k_thread *thread)
 {
-	unsigned int  key;
-
 #if (CONFIG_NUM_PIPE_ASYNC_MSGS > 0)
 	if (thread->base.thread_state & _THREAD_DUMMY) {
 		pipe_async_finish((struct k_pipe_async *)thread);
@@ -418,9 +417,7 @@ static void pipe_thread_ready(struct k_thread *thread)
 	}
 #endif
 
-	key = irq_lock();
 	_ready_thread(thread);
-	irq_unlock(key);
 }
 
 /**
@@ -434,7 +431,7 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 	struct k_thread    *reader;
 	struct k_pipe_desc *desc;
 	sys_dlist_t    xfer_list;
-	unsigned int   key;
+	k_spinlock_key_t key;
 	size_t         num_bytes_written = 0;
 	size_t         bytes_copied;
 
@@ -442,7 +439,7 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 	ARG_UNUSED(async_desc);
 #endif
 
-	key = irq_lock();
+	key = k_spin_lock(&pipe->lock);
 
 	/*
 	 * Create a list of "working readers" into which the data will be
@@ -452,13 +449,13 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 	if (!pipe_xfer_prepare(&xfer_list, &reader, &pipe->wait_q.readers,
 				pipe->size - pipe->bytes_used, bytes_to_write,
 				min_xfer, timeout)) {
-		irq_unlock(key);
+		k_spin_unlock(&pipe->lock, key);
 		*bytes_written = 0;
 		return -EIO;
 	}
 
 	_sched_lock();
-	irq_unlock(key);
+	k_spin_unlock(&pipe->lock, key);
 
 	/*
 	 * 1. 'xfer_list' currently contains a list of reader threads that can
@@ -485,9 +482,7 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 		desc->bytes_to_xfer -= bytes_copied;
 
 		/* The thread's read request has been satisfied. Ready it. */
-		key = irq_lock();
 		_ready_thread(thread);
-		irq_unlock(key);
 
 		thread = (struct k_thread *)sys_dlist_get(&xfer_list);
 	}
@@ -531,15 +526,9 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 
 #if (CONFIG_NUM_PIPE_ASYNC_MSGS > 0)
 	if (async_desc != NULL) {
-		/*
-		 * Lock interrupts and unlock the scheduler before
-		 * manipulating the writers wait_q.
-		 */
-		key = irq_lock();
-		_sched_unlock_no_reschedule_irqlock();
 		_pend_thread((struct k_thread *) &async_desc->thread,
 			     &pipe->wait_q.writers, K_FOREVER);
-		_reschedule_irqlock(key);
+		_sched_unlock_no_reschedule_irqlock();
 		return 0;
 	}
 #endif
@@ -551,13 +540,8 @@ int _k_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 
 	if (timeout != K_NO_WAIT) {
 		_current->base.swap_data = &pipe_desc;
-		/*
-		 * Lock interrupts and unlock the scheduler before
-		 * manipulating the writers wait_q.
-		 */
-		key = irq_lock();
-		_sched_unlock_no_reschedule_irqlock();
-		_pend_curr_irqlock(key, &pipe->wait_q.writers, timeout);
+		k_sched_unlock();
+		_pend_curr_unlocked(&pipe->wait_q.writers, timeout);
 	} else {
 		k_sched_unlock();
 	}
@@ -574,14 +558,14 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 	struct k_thread    *writer;
 	struct k_pipe_desc *desc;
 	sys_dlist_t    xfer_list;
-	unsigned int   key;
+	k_spinlock_key_t key;
 	size_t         num_bytes_read = 0;
 	size_t         bytes_copied;
 
 	__ASSERT(min_xfer <= bytes_to_read, "");
 	__ASSERT(bytes_read != NULL, "");
 
-	key = irq_lock();
+	key = k_spin_lock(&pipe->lock);
 
 	/*
 	 * Create a list of "working readers" into which the data will be
@@ -591,13 +575,13 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 	if (!pipe_xfer_prepare(&xfer_list, &writer, &pipe->wait_q.writers,
 				pipe->bytes_used, bytes_to_read,
 				min_xfer, timeout)) {
-		irq_unlock(key);
+		k_spin_unlock(&pipe->lock, key);
 		*bytes_read = 0;
 		return -EIO;
 	}
 
 	_sched_lock();
-	irq_unlock(key);
+	k_spin_unlock(&pipe->lock, key);
 
 	num_bytes_read = pipe_buffer_get(pipe, data, bytes_to_read);
 
@@ -697,9 +681,8 @@ int _impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 
 	if (timeout != K_NO_WAIT) {
 		_current->base.swap_data = &pipe_desc;
-		key = irq_lock();
 		_sched_unlock_no_reschedule_irqlock();
-		_pend_curr_irqlock(key, &pipe->wait_q.readers, timeout);
+		_pend_curr_unlocked(&pipe->wait_q.readers, timeout);
 	} else {
 		k_sched_unlock();
 	}
