@@ -257,16 +257,10 @@ static void pend(struct k_thread *thread, _wait_q_t *wait_q, s32_t timeout)
 	_remove_thread_from_ready_q(thread);
 	_mark_thread_as_pending(thread);
 
-	/* The timeout handling is currently synchronized external to
-	 * the scheduler using the legacy global lock.  Should fix
-	 * that.
-	 */
 	if (timeout != K_FOREVER) {
 		s32_t ticks = _TICK_ALIGN + _ms_to_ticks(timeout);
-		int key = irq_lock();
 
 		_add_thread_timeout(thread, wait_q, ticks);
-		irq_unlock(key);
 	}
 
 	if (wait_q) {
@@ -413,7 +407,7 @@ int _reschedule(struct k_spinlock *lock, k_spinlock_key_t key)
 		return _Swap(lock, key);
 	}
 
- 	k_spin_unlock(lock, key);
+	k_spin_unlock(lock, key);
 	return 0;
 }
 
@@ -798,11 +792,7 @@ Z_SYSCALL_HANDLER0_SIMPLE_VOID(k_yield);
 void _impl_k_sleep(s32_t duration)
 {
 #ifdef CONFIG_MULTITHREADING
-	/* volatile to guarantee that irq_lock() is executed after ticks is
-	 * populated
-	 */
 	volatile s32_t ticks;
-	unsigned int key;
 
 	__ASSERT(!_is_in_isr(), "");
 	__ASSERT(duration != K_FOREVER, "");
@@ -816,12 +806,11 @@ void _impl_k_sleep(s32_t duration)
 	}
 
 	ticks = _TICK_ALIGN + _ms_to_ticks(duration);
-	key = irq_lock();
 
 	_remove_thread_from_ready_q(_current);
 	_add_thread_timeout(_current, NULL, ticks);
 
-	_Swap_irqlock(key);
+	_Swap_unlocked();
 #endif
 }
 

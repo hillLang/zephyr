@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+extern struct k_spinlock _timeout_lock;
+
 /* initialize the timeouts part of k_thread when enabled in the kernel */
 
 static inline void _init_timeout(struct _timeout *t, _timeout_func_t func)
@@ -83,7 +85,7 @@ static inline void _unpend_thread_timing_out(struct k_thread *thread,
 static inline void _handle_one_expired_timeout(struct _timeout *timeout)
 {
 	struct k_thread *thread = timeout->thread;
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&_timeout_lock);
 
 	timeout->delta_ticks_from_prev = _INACTIVE;
 
@@ -92,9 +94,9 @@ static inline void _handle_one_expired_timeout(struct _timeout *timeout)
 		_unpend_thread_timing_out(thread, timeout);
 		_mark_thread_as_started(thread);
 		_ready_thread(thread);
-		irq_unlock(key);
+		k_spin_unlock(&_timeout_lock, key);
 	} else {
-		irq_unlock(key);
+		k_spin_unlock(&_timeout_lock, key);
 		if (timeout->func) {
 			timeout->func(timeout);
 		}
@@ -124,6 +126,8 @@ static inline int _abort_timeout(struct _timeout *timeout)
 		return _INACTIVE;
 	}
 
+	k_spinlock_key_t key = k_spin_lock(&_timeout_lock);
+
 	if (!sys_dlist_is_tail(&_timeout_q, &timeout->node)) {
 		sys_dnode_t *next_node =
 			sys_dlist_peek_next(&_timeout_q, &timeout->node);
@@ -133,6 +137,8 @@ static inline int _abort_timeout(struct _timeout *timeout)
 	}
 	sys_dlist_remove(&timeout->node);
 	timeout->delta_ticks_from_prev = _INACTIVE;
+
+	k_spin_unlock(&_timeout_lock, key);
 
 	return 0;
 }
@@ -218,6 +224,7 @@ static inline void _add_timeout(struct k_thread *thread,
 		return;
 	}
 
+	k_spinlock_key_t key = k_spin_lock(&_timeout_lock);
 	s32_t *delta = &timeout->delta_ticks_from_prev;
 	struct _timeout *in_q;
 
@@ -260,6 +267,8 @@ inserted:
 		_set_time(adjusted_timeout);
 	}
 #endif
+
+	k_spin_unlock(&_timeout_lock, key);
 }
 
 /*
