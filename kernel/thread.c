@@ -31,6 +31,8 @@
 extern struct _static_thread_data _static_thread_data_list_start[];
 extern struct _static_thread_data _static_thread_data_list_end[];
 
+static struct k_spinlock lock;
+
 #define _FOREACH_STATIC_THREAD(thread_data)              \
 	for (struct _static_thread_data *thread_data =   \
 	     _static_thread_data_list_start;             \
@@ -41,7 +43,7 @@ void k_thread_foreach(k_thread_user_cb_t user_cb, void *user_data)
 {
 #if defined(CONFIG_THREAD_MONITOR)
 	struct k_thread *thread;
-	unsigned int key;
+	k_spinlock_key_t key;
 
 	__ASSERT(user_cb, "user_cb can not be NULL");
 
@@ -51,11 +53,11 @@ void k_thread_foreach(k_thread_user_cb_t user_cb, void *user_data)
 	 * The indircet ways are through calling k_thread_create and
 	 * k_thread_abort from user_cb.
 	 */
-	key = irq_lock();
+	key = k_spin_lock(&lock);
 	for (thread = _kernel.threads; thread; thread = thread->next_thread) {
 		user_cb(thread, user_data);
 	}
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 #endif
 }
 
@@ -153,7 +155,7 @@ Z_SYSCALL_HANDLER0_SIMPLE(k_thread_custom_data_get);
  */
 void _thread_monitor_exit(struct k_thread *thread)
 {
-	unsigned int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	if (thread == _kernel.threads) {
 		_kernel.threads = _kernel.threads->next_thread;
@@ -170,7 +172,7 @@ void _thread_monitor_exit(struct k_thread *thread)
 		}
 	}
 
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 }
 #endif /* CONFIG_THREAD_MONITOR */
 
@@ -210,16 +212,16 @@ void _check_stack_sentinel(void)
 #ifdef CONFIG_MULTITHREADING
 void _impl_k_thread_start(struct k_thread *thread)
 {
-	int key = irq_lock(); /* protect kernel queues */
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	if (_has_thread_started(thread)) {
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 		return;
 	}
 
 	_mark_thread_as_started(thread);
 	_ready_thread(thread);
-	_reschedule_irqlock(key);
+	_reschedule(&lock, key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -300,11 +302,11 @@ void _setup_new_thread(struct k_thread *new_thread,
 	new_thread->entry.parameter2 = p2;
 	new_thread->entry.parameter3 = p3;
 
-	int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	new_thread->next_thread = _kernel.threads;
 	_kernel.threads = new_thread;
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 #endif
 #ifdef CONFIG_USERSPACE
 	_k_object_init(new_thread);
@@ -446,18 +448,18 @@ int _impl_k_thread_cancel(k_tid_t tid)
 {
 	struct k_thread *thread = tid;
 
-	int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	if (_has_thread_started(thread) ||
 	    !_is_thread_timeout_active(thread)) {
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 		return -EINVAL;
 	}
 
 	_abort_thread_timeout(thread);
 	_thread_monitor_exit(thread);
 
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 
 	return 0;
 }
@@ -478,14 +480,14 @@ void _k_thread_single_suspend(struct k_thread *thread)
 
 void _impl_k_thread_suspend(struct k_thread *thread)
 {
-	unsigned int  key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	_k_thread_single_suspend(thread);
 
 	if (thread == _current) {
-		_reschedule_irqlock(key);
+		_reschedule(&lock, key);
 	} else {
-		irq_unlock(key);
+		k_spin_unlock(&lock, key);
 	}
 }
 
@@ -501,11 +503,10 @@ void _k_thread_single_resume(struct k_thread *thread)
 
 void _impl_k_thread_resume(struct k_thread *thread)
 {
-	unsigned int  key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	_k_thread_single_resume(thread);
-
-	_reschedule_irqlock(key);
+	_reschedule(&lock, key);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -568,7 +569,7 @@ static void grant_static_access(void)
 
 void _init_static_threads(void)
 {
-	unsigned int  key;
+	k_spinlock_key_t key;
 
 	_FOREACH_STATIC_THREAD(thread_data) {
 		_setup_new_thread(
@@ -599,14 +600,14 @@ void _init_static_threads(void)
 	 * Note that static threads defined using the legacy API have a
 	 * delay of K_FOREVER.
 	 */
-	key = irq_lock();
+	key = k_spin_lock(&lock);
 	_FOREACH_STATIC_THREAD(thread_data) {
 		if (thread_data->init_delay != K_FOREVER) {
 			schedule_new_thread(thread_data->init_thread,
 					    thread_data->init_delay);
 		}
 	}
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 	k_sched_unlock();
 }
 #endif
