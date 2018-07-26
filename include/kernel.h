@@ -3239,6 +3239,7 @@ __syscall void k_alert_send(struct k_alert *alert);
  */
 struct k_msgq {
 	_wait_q_t wait_q;
+	struct k_spinlock lock;
 	size_t msg_size;
 	u32_t max_msgs;
 	char *buffer_start;
