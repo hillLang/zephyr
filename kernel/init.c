@@ -473,6 +473,7 @@ FUNC_NORETURN void _Cstart(void)
 	memset(dummy_thread_memory, 0, sizeof(dummy_thread_memory));
 #endif
 #endif
+
 	/*
 	 * The interrupt library needs to be initialized early since a series
 	 * of handlers are installed into the interrupt table to catch
