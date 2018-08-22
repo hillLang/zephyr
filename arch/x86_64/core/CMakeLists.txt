@@ -50,3 +50,20 @@ add_custom_command(
     ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub32.elf
     ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub32.bin
 )
+
+# The zephyr.elf file generated for an x86_64 binary is a 64 bit
+# binary, but Qemu requires a traditional i386 file (because the entry
+# point from multiboot is in 386 protected mode).  Do a relink dance
+# with objcopy to convert.
+#
+set(qkernel_file ${CMAKE_BINARY_DIR}/zephyr-qemu.elf)
+add_custom_target(qemu_kernel_target DEPENDS ${qkernel_file})
+add_custom_command(
+  OUTPUT ${qkernel_file}
+  COMMAND ${CMAKE_OBJCOPY} -O binary ${CMAKE_BINARY_DIR}/zephyr/zephyr.elf ${CMAKE_CURRENT_BINARY_DIR}/zephyr-qemu.bin
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/qemuinc.c ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${CMAKE_C_COMPILER} -m32 -c ${CMAKE_CURRENT_BINARY_DIR}/qemuinc.c -o ${CMAKE_CURRENT_BINARY_DIR}/zephyr-qemu.o
+  COMMAND ${CMAKE_C_COMPILER} -m32 -T ${CMAKE_CURRENT_SOURCE_DIR}/xuk64.ld
+          -Wl,--build-id=none -nostdlib -nodefaultlibs -nostartfiles
+          -o ${qkernel_file} ${CMAKE_CURRENT_BINARY_DIR}/zephyr-qemu.o
+  )
