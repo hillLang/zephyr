@@ -454,7 +454,7 @@ static void smp_init(void)
 	while (_apic.ICR_LO.send_pending) {
 	}
 
-	for (int i = 1; i < CONFIG_XUK_NUM_CPUS; i++) {
+	for (int i = 1; i < CONFIG_MP_NUM_CPUS; i++) {
 		_shared.smpinit_stack = _init_cpu_stack(i);
 		printf("Granting stack @ %xh to CPU %d\n",
 		       _shared.smpinit_stack, i);

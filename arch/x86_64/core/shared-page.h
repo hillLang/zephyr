@@ -32,7 +32,7 @@ struct xuk_shared_mem {
 	unsigned int base_cr3;
 
 	/* 64 bit GDT */
-	struct gdt64 gdt[3 + (2 * CONFIG_XUK_NUM_CPUS)];
+	struct gdt64 gdt[3 + (2 * CONFIG_MP_NUM_CPUS)];
 
 	/* 64 bit IDT */
 	unsigned int idt_addr;
@@ -43,8 +43,8 @@ struct xuk_shared_mem {
 	/* Each pointer in these arrays is the base of the FS/GS
 	 * segment for the indexed CPU.
 	 */
-	long long fs_ptrs[CONFIG_XUK_NUM_CPUS];
-	long long gs_ptrs[CONFIG_XUK_NUM_CPUS];
+	long long fs_ptrs[CONFIG_MP_NUM_CPUS];
+	long long gs_ptrs[CONFIG_MP_NUM_CPUS];
 
 	int num_active_cpus;
 

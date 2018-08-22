@@ -28,7 +28,7 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub16.bin
-  COMMAND ${CMAKE_C_COMPILER} -m16 -Os ${X86_64_BASE_CFLAGS}
+  COMMAND ${CMAKE_C_COMPILER} -m16 -Os ${X86_64_BASE_CFLAGS}  -imacros ${AUTOCONF_H}
     -c ${CMAKE_CURRENT_SOURCE_DIR}/xuk-stub16.c
     -o ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub16.o
   COMMAND ${CMAKE_OBJCOPY} -O binary -j .text
@@ -38,7 +38,7 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub32.bin
-  COMMAND ${CMAKE_C_COMPILER} -m32 -Os ${X86_64_BASE_CFLAGS}
+  COMMAND ${CMAKE_C_COMPILER} -m32 -Os ${X86_64_BASE_CFLAGS} -imacros ${AUTOCONF_H}
     -c ${CMAKE_CURRENT_SOURCE_DIR}/xuk-stub32.c
     -o ${CMAKE_CURRENT_BINARY_DIR}/xuk-stub32.o
   COMMAND ${CMAKE_C_COMPILER} -m32 ${X86_64_BASE_CFLAGS}
