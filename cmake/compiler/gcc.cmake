@@ -14,6 +14,21 @@ find_program(CMAKE_READELF    ${CROSS_COMPILE}readelf PATH ${TOOLCHAIN_HOME} NO_
 find_program(CMAKE_GDB        ${CROSS_COMPILE}gdb     PATH ${TOOLCHAIN_HOME} NO_DEFAULT_PATH)
 find_program(CMAKE_NM         ${CROSS_COMPILE}nm      PATH ${TOOLCHAIN_HOME} NO_DEFAULT_PATH)
 
+# x86_64 should pick up a proper cross compiler if one is provided,
+# but falling back to using the host toolchain is a very sane behavior
+# too.
+if(CONFIG_X86_64)
+  if(CMAKE_C_COMPILER STREQUAL CMAKE_C_COMPILER-NOTFOUND)
+    find_program(CMAKE_C_COMPILER   gcc    )
+    find_program(CMAKE_OBJCOPY      objcopy)
+    find_program(CMAKE_OBJDUMP      objdump)
+    find_program(CMAKE_AR           ar     )
+    find_program(CMAKE_RANLILB      ranlib )
+    find_program(CMAKE_READELF      readelf)
+    find_program(CMAKE_GDB          gdb    )
+  endif()
+endif()
+
 if(CMAKE_C_COMPILER STREQUAL CMAKE_C_COMPILER-NOTFOUND)
   message(FATAL_ERROR "Zephyr was unable to find the toolchain. Is the environment misconfigured?
 User-configuration:
