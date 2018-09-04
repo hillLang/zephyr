@@ -47,21 +47,21 @@ void *_isr_exit_restore_stack(void *interrupted)
 	return _get_next_switch_handle(interrupted);
 }
 
-typedef void (*cpu_init_fn_t)(int, void*);
-static cpu_init_fn_t cpu_init_fns[CONFIG_MP_NUM_CPUS];
-static void *cpu_init_args[CONFIG_MP_NUM_CPUS];
+struct {
+	void (*fn)(int, void*);
+	void *arg;
+	unsigned int esp;
+} cpu_init[CONFIG_MP_NUM_CPUS];
 
 /* Called from Zephyr initialization */
 void _arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 		     void (*fn)(int, void *), void *arg)
 {
-	/* We ignore the stack, having already configured it.  See
-	 * explanation below.
-	 */
-	ARG_UNUSED(stack);
-	ARG_UNUSED(sz);
-	cpu_init_fns[cpu_num] = fn;
-	cpu_init_args[cpu_num] = arg;
+	cpu_init[cpu_num].arg = arg;
+	cpu_init[cpu_num].esp = (int)(long)(sz + (char *)stack);
+
+	/* This is our flag to the spinning CPU.  Do this last */
+	cpu_init[cpu_num].fn = fn;
 }
 
 /* Called from xuk layer on actual CPU start */
@@ -71,7 +71,7 @@ void _cpu_start(int cpu)
 
 	if (cpu <= 0) {
 		for (int i = 0; i < CONFIG_MP_NUM_CPUS; i++) {
-			cpu_init_fns[i] = 0;
+			cpu_init[i].fn = 0;
 		}
 
 		_Cstart();
@@ -79,11 +79,11 @@ void _cpu_start(int cpu)
 		/* SMP initialization.  First spin, waiting for
 		 * _arch_start_cpu() to be called from the main CPU
 		 */
-		while(!cpu_init_fns[cpu]) {
+		while(!cpu_init[cpu].fn) {
 		}
 
 		/* Enter Zephyr, which will switch away and never return */
-		cpu_init_fns[cpu](0, cpu_init_args[cpu]);
+		cpu_init[cpu].fn(0, cpu_init[cpu].arg);
 	}
 
 	/* Spin forever as a fallback */
@@ -92,26 +92,10 @@ void _cpu_start(int cpu)
 }
 
 /* Returns the initial stack to use for CPU startup on auxilliary (not
- * cpu 0) processors to the xuk layer.  We just use the interrupt
- * stack, which is sort of an impedance mismatch.  The original SMP
- * API wants to pass the stack to _arch_start_cpu(), but with xuk it's
- * much simpler to let the lower level do it on its own and "request"
- * the stack from us here.
+ * cpu 0) processors to the xuk layer, which gets selected by the
+ * non-arch Zephyr kernel and stashed by _arch_start_cpu()
  */
 unsigned int _init_cpu_stack(int cpu)
 {
-	extern k_thread_stack_t _interrupt_stack1[];
-	extern k_thread_stack_t _interrupt_stack2[];
-	extern k_thread_stack_t _interrupt_stack3[];
-	void *base = 0;
-
-	if (cpu == 1) {
-		base = &_interrupt_stack1[0];
-	} else if(cpu == 2) {
-		base = &_interrupt_stack2[0];
-	} else if(cpu == 3) {
-		base = &_interrupt_stack3[0];
-	}
-
-	return (int)(long)(base + CONFIG_ISR_STACK_SIZE);
+	return cpu_init[cpu].esp;
 }
