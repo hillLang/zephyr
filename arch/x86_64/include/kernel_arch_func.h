@@ -2,6 +2,7 @@
 #define _KERNEL_ARCH_FUNC_H
 
 #include <irq.h>
+#include <xuk-switch.h>
 
 static inline void kernel_arch_init(void)
 {
@@ -61,7 +62,7 @@ static inline void _IntLibInit(void)
 
 static inline void _arch_switch(void *switch_to, void **switched_from)
 {
-	// FIXME
+	xuk_switch(switch_to, switched_from);
 }
 
 #endif /* _KERNEL_ARCH_FUNC_H */

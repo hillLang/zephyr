@@ -1,25 +1,12 @@
 #ifndef _XUK_H
 #define _XUK_H
 
+#include <xuk-switch.h>
 #include "shared-page.h"
 
 /*
  * APIs exposed by the xuk layer to OS integration:
  */
-
-static inline void xuk_switch(void *switch_to, void **switched_from)
-{
-	/* Constructs an IRETQ interrupt frame, the final CALL pushes
-	 * the RIP to which to return
-	 */
-	__asm__ volatile("mov %%rsp, %%rcx;"
-			 "pushq $0x10;"      /* SS */
-			 "pushq %%rcx;"      /* RSP */
-			 "pushfq;"           /* RFLAGS */
-			 "pushq $0x08;"      /* CS */
-			 "callq _switch_top"
-			 : : "a"(switch_to), "d"(switched_from) : "ecx");
-}
 
 /* Set a single CPU-specific pointer which can be retrieved (on that
  * CPU!) with get_f_ptr()

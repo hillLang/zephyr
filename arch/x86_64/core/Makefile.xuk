@@ -8,7 +8,7 @@ QEMU ?= qemu-system-x86_64
 # floating point, and we don't want to take the traps except on
 # threads that definitely need it.  No red zone becuase it's
 # incompatible with traditional stack-based interrupt entry.
-CFLAGS =  -Os -std=c11 -ffreestanding -fno-pic -fno-asynchronous-unwind-tables -mno-sse -mno-red-zone
+CFLAGS =  -Os -I../include -std=c11 -ffreestanding -fno-pic -fno-asynchronous-unwind-tables -mno-sse -mno-red-zone
 
 LDFLAGS = -Wl,--build-id=none -nostdlib -nodefaultlibs -nostartfiles
 
