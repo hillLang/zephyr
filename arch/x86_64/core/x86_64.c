@@ -11,8 +11,8 @@ void _new_thread(struct k_thread *t, k_thread_stack_t *stack,
                  void *p1, void *p2, void *p3,
                  int prio, unsigned int opts)
 {
-	void *args[] = { p1, p2, p3 };
-	int nargs = 3;
+	void *args[] = { entry, p1, p2, p3 };
+	int nargs = 4;
 	int eflags = 0;
 	char *base = K_THREAD_STACK_BUFFER(stack);
 	char *top = base + sz;
@@ -20,7 +20,7 @@ void _new_thread(struct k_thread *t, k_thread_stack_t *stack,
 	_new_thread_init(t, base, sz, prio, opts);
 
 	t->switch_handle = (void *)xuk_setup_stack((long) top,
-						   (void *)entry,
+						   (void *)_thread_entry,
 						   eflags, (long *)args,
 						   nargs);
 }
