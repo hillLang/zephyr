@@ -9,9 +9,14 @@
 
 static inline void xuk_switch(void *switch_to, void **switched_from)
 {
-	__asm__ volatile("pushfq;"
-			 "mov %%cs, %%ecx;"
-			 "pushq %%rcx;"
+	/* Constructs an IRETQ interrupt frame, the final CALL pushes
+	 * the RIP to which to return
+	 */
+	__asm__ volatile("mov %%rsp, %%rcx;"
+			 "pushq $0x10;"      /* SS */
+			 "pushq %%rcx;"      /* RSP */
+			 "pushfq;"           /* RFLAGS */
+			 "pushq $0x08;"      /* CS */
 			 "callq _switch_top"
 			 : : "a"(switch_to), "d"(switched_from) : "ecx");
 }

@@ -548,7 +548,7 @@ void _cstart64(int cpu_id)
 long xuk_setup_stack(long sp, void *fn, unsigned int eflags,
 		     long *args, int nargs)
 {
-	long long *f = (long long *)(sp & ~7) - 18;
+	long long *f = (long long *)(sp & ~7) - 20;
 
 	/* FIXME: this should extend naturally to setting up usermode
 	 * frames too: the frame should have a SS and RSP at the top
@@ -557,6 +557,8 @@ long xuk_setup_stack(long sp, void *fn, unsigned int eflags,
 	 * CS should be a separate ring 3 segment.
 	 */
 
+	f[19] = GDT_SELECTOR(2);
+	f[18] = sp;
 	f[17] = eflags;
 	f[16] = GDT_SELECTOR(1);
 	f[15] = (long)fn;
