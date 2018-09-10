@@ -1,16 +1,13 @@
 #include "xuk-config.h"
 #include "x86_64-hw.h"
 #include "xuk.h"
+#include "serial.h"
 
 #ifdef CONFIG_XUK_DEBUG
-#include "serial.h"
 #include "vgacon.h"
 #include "printf.h"
 #else
-int printf(const char *fmt, ...)
-{
-        return 0;
-}
+#define printf(...)
 #endif
 
 /* Defined at the linker level in xuk-stubs.c */
@@ -145,13 +142,13 @@ struct vhandler {
 
 static struct vhandler *vector_handlers;
 
-#ifdef CONFIG_XUK_DEBUG
 static void putchar(int c)
 {
 	serial_putc(c);
+#ifdef XUK_DEBUG
 	vgacon_putc(c);
-}
 #endif
+}
 
 long _isr_c_top(unsigned long vecret, unsigned long rsp,
 		unsigned long err)
@@ -580,8 +577,6 @@ long xuk_setup_stack(long sp, void *fn, unsigned int eflags,
 
 int z_arch_printk_char_out(int c)
 {
-#ifdef CONFIG_XUK_DEBUG
 	putchar(c);
-#endif
 	return 0;
 }

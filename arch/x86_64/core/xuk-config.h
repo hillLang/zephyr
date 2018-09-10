@@ -7,7 +7,7 @@
  */
 #ifndef CONFIG_X86_64
 
-#define CONFIG_XUK_DEBUG 1
+/* #define CONFIG_XUK_DEBUG 1 */
 
 /* The APIC timer will run 2^X times slower than the TSC. (X = 0-7) */
 #define CONFIG_XUK_APIC_TSC_SHIFT 6
