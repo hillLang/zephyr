@@ -37,6 +37,9 @@ static inline void _arch_irq_unlock(unsigned int key)
 	}
 }
 
+void _arch_irq_disable(unsigned int irq);
+void _arch_irq_enable(unsigned int irq);
+
 static inline unsigned int _arch_k_cycle_get_32(void)
 {
 	unsigned int hi, lo;

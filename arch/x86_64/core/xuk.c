@@ -264,6 +264,32 @@ void xuk_set_isr(int interrupt, int priority,
 	vector_handlers[v].arg = arg;
 }
 
+/* Note: "raw vector" interrupt numbers cannot be masked, as the APIC
+ * doesn't have a per-vector mask bit.  Only specific LVT interrupts
+ * (we handle timer below) and IOAPIC-generated interrupts can be
+ * masked on x86.  In practice, this isn't a problem as that API is a
+ * special-purpose kind of thing.  Real devices will always go through
+ * the supported channel.
+ */
+void xuk_set_isr_mask(int interrupt, int masked)
+{
+	if (interrupt == INT_APIC_LVT_TIMER) {
+		struct apic_lvt lvt = _apic.LVT_TIMER;
+
+		lvt.masked = masked;
+		_apic.LVT_TIMER = lvt;
+	} else if (interrupt < 0x100) {
+		struct ioapic_red red;
+		int regidx = 0x10 + 2 * interrupt;
+
+		red.regvals[0] = ioapic_read(regidx);
+		red.regvals[1] = ioapic_read(regidx + 1);
+		red.masked = masked;
+		ioapic_write(regidx, red.regvals[0]);
+		ioapic_write(regidx + 1, red.regvals[1]);
+	}
+}
+
 /* Note: these base pointers live together in a big block.  Eventually
  * we will probably want one of them for userspace TLS, which means it
  * will need to be retargetted to point somewhere within the

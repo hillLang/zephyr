@@ -2,6 +2,7 @@
 #include <kernel_structs.h>
 #include <tracing.h>
 #include <ksched.h>
+#include <irq_offload.h>
 #include "xuk.h"
 
 struct device;
@@ -64,10 +65,40 @@ void _arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 	cpu_init[cpu_num].fn = fn;
 }
 
+#ifdef CONFIG_IRQ_OFFLOAD
+static irq_offload_routine_t offload_fn;
+static void *offload_arg;
+
+static void irq_offload_handler(void *arg, int err)
+{
+	ARG_UNUSED(arg);
+	ARG_UNUSED(err);
+	offload_fn(offload_arg);
+}
+#endif
+
+void irq_offload(irq_offload_routine_t fn, void *arg)
+{
+	offload_fn = fn;
+	offload_arg = arg;
+
+	_apic.ICR_HI = (struct apic_icr_hi) {};
+	_apic.ICR_LO = (struct apic_icr_lo) {
+		.delivery_mode = FIXED,
+		.vector = CONFIG_IRQ_OFFLOAD_VECTOR,
+		.shorthand = SELF,
+	};
+}
+
 /* Called from xuk layer on actual CPU start */
 void _cpu_start(int cpu)
 {
 	xuk_set_f_ptr(cpu, &_kernel.cpus[cpu]);
+
+#ifdef CONFIG_IRQ_OFFLOAD
+	xuk_set_isr(XUK_INT_RAW_VECTOR(CONFIG_IRQ_OFFLOAD_VECTOR),
+		    -1, irq_offload_handler, 0);
+#endif
 
 	if (cpu <= 0) {
 		for (int i = 0; i < CONFIG_MP_NUM_CPUS; i++) {
@@ -98,4 +129,14 @@ void _cpu_start(int cpu)
 unsigned int _init_cpu_stack(int cpu)
 {
 	return cpu_init[cpu].esp;
+}
+
+void _arch_irq_disable(unsigned int irq)
+{
+	xuk_set_isr_mask(irq, 1);
+}
+
+void _arch_irq_enable(unsigned int irq)
+{
+	xuk_set_isr_mask(irq, 0);
 }

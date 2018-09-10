@@ -22,3 +22,12 @@ config XUK_APIC_TSC_SHIFT
 	  the TSC frequency.  High values "slow down" the tick rate of
 	  the APIC timer and allow for longer timeouts at the expense
 	  of precision.
+
+config IRQ_OFFLOAD_VECTOR
+	int "Power-of-two divisor between TSC and APIC timer"
+	default 144
+	help
+	  This is the interrupt vector to use for the self-directed
+	  IPIs used to implement irq_offload().  Most apps will never
+	  change this.  It's configurable in case someone wants to
+	  play with its priority.

@@ -81,6 +81,10 @@ void xuk_set_isr(int interrupt, int priority,
 
 #define INT_APIC_LVT_TIMER 0x200
 
+#define XUK_INT_RAW_VECTOR(vector) ((vector)+0x100)
+
+void xuk_set_isr_mask(int interrupt, int masked);
+
 /* Sets up a new stack. The sp argument should point to the quadword
  * above (!) the allocated stack area (i.e. the frame will be pushed
  * below it).  The frame will be set up to enter the function in the

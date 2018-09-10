@@ -102,6 +102,24 @@ void test_switch()
 	printf("Back from switch\n");
 }
 
+void local_ipi_handler(void *arg, int err)
+{
+	printf("local_ipi_handler on CPU%d\n", (int)(long)xuk_get_f_ptr());
+}
+
+/* Sends an IPI to the current CPU and validates it ran */
+void test_local_ipi()
+{
+	printf("Testing a local IPI on CPU%d\n", (int)(long)xuk_get_f_ptr());
+
+	_apic.ICR_HI = (struct apic_icr_hi) {};
+	_apic.ICR_LO = (struct apic_icr_lo) {
+		.delivery_mode = FIXED,
+		.vector = 0x90,
+		.shorthand = SELF,
+	};
+}
+
 void _cpu_start(int cpu)
 {
 	_putchar = putchar;
@@ -158,6 +176,9 @@ void _cpu_start(int cpu)
 	}
 
 	test_switch();
+
+	xuk_set_isr(XUK_INT_RAW_VECTOR(0x90), -1, local_ipi_handler, 0);
+	test_local_ipi();
 
 	printf("CPU%d initialzed, sleeping\n", cpu);
 	while (1) {
