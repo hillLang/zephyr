@@ -27,7 +27,9 @@ __asm__("   cli\n"
 
 void _start16(void)
 {
+#ifdef XUK_DEBUG
     serial_putc('1'); serial_putc('6'); serial_putc('\n');
+#endif
 
     /* First, serialize on a simple spinlock.  Note there's a
      * theoretical flaw here in that we are on a shared stack with the

@@ -6,14 +6,14 @@
 
 static inline void _serout(int c)
 {
-	while(!(ioport_in8(_PORT + 5) & 0x20)) {
+	while (!(ioport_in8(_PORT + 5) & 0x20)) {
 	}
 	ioport_out8(_PORT, c);
 }
 
 static inline void serial_putc(int c)
 {
-	if(c == '\n') {
+	if (c == '\n') {
 		_serout('\r');
 	}
 	_serout(c);
@@ -21,7 +21,7 @@ static inline void serial_putc(int c)
 
 static inline void serial_puts(const char *s)
 {
-	while(*s) {
+	while (*s) {
 		serial_putc(*s++);
 	}
 }

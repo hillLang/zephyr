@@ -24,7 +24,7 @@ config XUK_APIC_TSC_SHIFT
 	  of precision.
 
 config IRQ_OFFLOAD_VECTOR
-	int "Power-of-two divisor between TSC and APIC timer"
+	int "Interrupt vector for irq_offload"
 	default 144
 	help
 	  This is the interrupt vector to use for the self-directed

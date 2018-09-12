@@ -20,7 +20,7 @@ static inline void vga_put(int ch, int color, int row, int col)
 
 static inline void vgacon_putc(char c)
 {
-	if(_shared.vgacol == 80) {
+	if (_shared.vgacol == 80) {
 		for(int r = 0; r < 24; r++) {
 			for(int c = 0; c < 80; c++) {
 				_vga_row(r)[c] = _vga_row(r+1)[c];

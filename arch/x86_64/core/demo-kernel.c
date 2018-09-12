@@ -30,11 +30,11 @@ void test_timers(void)
 	apic0 = _apic.CURR_COUNT;
 	do {
 		/* Qemu misbehaves if I spam these registers. */
-		for(int i=0; i<1000; i++) __asm__ volatile("nop");
+		for (int i=0; i<1000; i++) __asm__ volatile("nop");
 
 		__asm__ volatile("rdtsc" : "=a"(tsc1) : : "rdx");
 		apic1 = _apic.CURR_COUNT;
-	} while((tsc1 - tsc0) < 10000 || (apic0 - apic1) < 10000);
+	} while ((tsc1 - tsc0) < 10000 || (apic0 - apic1) < 10000);
 	printf("tsc %d apic %d\n", tsc1 - tsc0, apic0 - apic1);
 }
 
@@ -161,7 +161,7 @@ void _cpu_start(int cpu)
 	if (cpu == 1) {
 		int t0 = rdtsc();
 
-		while(rdtsc() - t0 < 1000000) {
+		while (rdtsc() - t0 < 1000000) {
 		}
 
 		_apic.ICR_HI = (struct apic_icr_hi) {

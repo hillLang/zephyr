@@ -101,11 +101,18 @@ void _cpu_start(int cpu)
 #endif
 
 	if (cpu <= 0) {
+		/* The SMP CPU startup function pointers act as init
+		 * flags.  Zero them here because this code is running
+		 * BEFORE .bss is zeroed!  Should probably move that
+		 * out of _Cstart() for this architecture...
+		 */
 		for (int i = 0; i < CONFIG_MP_NUM_CPUS; i++) {
 			cpu_init[i].fn = 0;
 		}
 
+		/* Enter Zephyr */
 		_Cstart();
+
 	} else if (cpu < CONFIG_MP_NUM_CPUS) {
 		/* SMP initialization.  First spin, waiting for
 		 * _arch_start_cpu() to be called from the main CPU

@@ -79,12 +79,12 @@ __asm__(/* Exceptions that push an error code arrive here. */
 	"    iretq"            "\n");
 
 /* Top half of a context switch.  Arrive here with the "CPU pushed"
- * part of the exception frame (RFLAGS, CS, RIP) already on the stack,
- * the context pointer to which to switch stored in RAX and a pointer
- * into which to store the current context in RDX.  It will push the
- * first half of the register set (the same caller-save registers
- * pushed by an ISR) and then continue on to _switch_bottom to finish
- * up.
+ * part of the exception frame (SS, RSP, RFLAGS, CS, RIP) already on
+ * the stack, the context pointer to which to switch stored in RAX and
+ * a pointer into which to store the current context in RDX.  It will
+ * push the first half of the register set (the same caller-save
+ * registers pushed by an ISR) and then continue on to _switch_bottom
+ * to finish up.
  */
 __asm__(".align 16\n"
 	".global _switch_top\n"
