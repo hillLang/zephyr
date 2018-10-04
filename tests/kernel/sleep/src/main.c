@@ -10,6 +10,7 @@
 #include <misc/util.h>
 #include <irq_offload.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #if defined(CONFIG_ASSERT) && defined(CONFIG_DEBUG)
 #define THREAD_STACK    (512 + CONFIG_TEST_EXTRA_STACKSIZE)
@@ -79,16 +80,17 @@ static void align_to_tick_boundary(void)
 
 }
 
-/* Shouldn't ever sleep for less than requested time, but allow for 1
- * tick of "too long" slop for aliasing between wakeup and
- * measurement. Qemu at least will leak the external world's clock
- * rate into the simulator when the host is under load.
+/* Shouldn't ever sleep for less than requested time, but allow for 2
+ * ticks of "too long" slop for aliasing between wakeup and
+ * measurement.  Under tickless, both start and end may alias across
+ * an expired cycle count.  Also qemu without -icount will leak the
+ * host wall clock time into the simulated environment.
  */
 static int sleep_time_valid(u32_t start, u32_t end, u32_t dur)
 {
 	u32_t dt = end - start;
 
-	return dt >= dur && dt <= (dur + 1);
+	return abs(dt - dur) <= 2;
 }
 
 static void test_thread(int arg1, int arg2)
