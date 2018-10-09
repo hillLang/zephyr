@@ -48,6 +48,8 @@ void reset_overflow(void)
 	ctrl_cache = 0;
 }
 
+static u32_t elapsed(void); //DEBUG
+
 /* Callout out of platform assembly, not hooked via IRQ_CONNECT... */
 void _timer_int_handler(void *arg)
 {
@@ -59,6 +61,7 @@ void _timer_int_handler(void *arg)
 	dticks = (cycle_count - announced_cycles) / CYC_PER_TICK;
 	announced_cycles += dticks * CYC_PER_TICK;
 	reset_overflow();
+
 	k_spin_unlock(&lock, key);
 
 	z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : 1);
@@ -96,7 +99,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 #ifdef CONFIG_TICKLESS_KERNEL
 	u32_t val0, val1, delay, now, ll0;
 
-	ticks = min(MAX_TICKS, max(ticks, 1));
+	ticks = min(MAX_TICKS, max(ticks - 1, 0));
 
 	/* Desired delay in the future */
 	delay = (ticks == 0) ? MIN_DELAY : ticks * CYC_PER_TICK;
@@ -107,6 +110,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	val0 = SysTick->VAL & COUNTER_MAX;
 	// FIXME: can roll over, also "now" should just be c_c
 	now = ((last_load - val0) & COUNTER_MAX) + cycle_count;
+	__ASSERT(last_load > val0, ""); //DEBUG
 
 	/* Expresed as a delta from last announcement */
 	delay = delay + (now - announced_cycles);
@@ -139,13 +143,20 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 #endif
 }
 
+// FIXME: the -announced bit is redundant with / undone by cycle_get_32()
 static u32_t elapsed(void)
 {
+	// FIXME: read from VAL and CTRL is nonatomic, might span an
+	// overflow
 	u32_t val = SysTick->VAL & COUNTER_MAX;
 	u32_t cyc = cycle_count - announced_cycles;
 
 	ctrl_cache |= SysTick->CTRL;
 	u32_t ov = (ctrl_cache & SysTick_CTRL_COUNTFLAG_Msk) ? last_load : 0;
+
+	// If we see an overflow, it better be in the first 2% of a
+	// tick!
+	__ASSERT(!ov || k_is_in_isr() || (last_load - val < 2400), ""); //DEBUG
 
 	return (last_load - val) + cyc + ov;
 }
@@ -157,7 +168,7 @@ u32_t z_clock_elapsed(void)
 	}
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	u32_t ret = elapsed() + cycle_count - announced_cycles;
+	u32_t ret = elapsed();
 
 	k_spin_unlock(&lock, key);
 	return ret / CYC_PER_TICK;
@@ -166,9 +177,14 @@ u32_t z_clock_elapsed(void)
 u32_t _timer_cycle_get_32(void)
 {
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	u32_t ret = elapsed() + cycle_count;
+	u32_t ret = elapsed() + announced_cycles;
 
 	k_spin_unlock(&lock, key);
+
+	static u32_t LAST; //DEBUG
+	__ASSERT(LAST <= ret, "kcyc %d -> %d\n", LAST, ret);
+	LAST = ret;
+
 	return ret;
 }
 
