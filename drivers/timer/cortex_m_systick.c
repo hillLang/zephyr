@@ -38,17 +38,18 @@ static u32_t delay_adj;
 /* OR-accumulated cache of the CTRL register for testing overflow */
 static volatile u32_t ctrl_cache;
 
-/* The control register clears on read, necessitating this cache so
- * that elapsed() returns correctly the second+ time after an
- * overflow
- */
-void reset_overflow(void)
+static u32_t elapsed(void)
 {
-	ctrl_cache = SysTick->CTRL;
-	ctrl_cache = 0;
-}
+	u32_t val, ov;
 
-static u32_t elapsed(void); //DEBUG
+	do {
+		val = SysTick->VAL & COUNTER_MAX;
+		ctrl_cache |= SysTick->CTRL;
+	} while (SysTick->VAL > val);
+
+	ov = (ctrl_cache & SysTick_CTRL_COUNTFLAG_Msk) ? last_load : 0;
+	return (last_load - val) + ov;
+}
 
 /* Callout out of platform assembly, not hooked via IRQ_CONNECT... */
 void _timer_int_handler(void *arg)
@@ -60,7 +61,9 @@ void _timer_int_handler(void *arg)
 	cycle_count += last_load + delay_adj;
 	dticks = (cycle_count - announced_cycles) / CYC_PER_TICK;
 	announced_cycles += dticks * CYC_PER_TICK;
-	reset_overflow();
+
+	ctrl_cache = SysTick->CTRL; /* Reset overflow flag */
+	ctrl_cache = 0;
 
 	k_spin_unlock(&lock, key);
 
@@ -97,7 +100,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	}
 
 #ifdef CONFIG_TICKLESS_KERNEL
-	u32_t val0, val1, delay, now, ll0;
+	u32_t val0, val1, delay, ll0;
 
 	ticks = min(MAX_TICKS, max(ticks - 1, 0));
 
@@ -108,22 +111,12 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 
 	/* Get current time as soon as we take the lock */
 	val0 = SysTick->VAL & COUNTER_MAX;
-	// FIXME: can roll over, also "now" should just be c_c
-	now = ((last_load - val0) & COUNTER_MAX) + cycle_count;
-	__ASSERT(last_load > val0, ""); //DEBUG
+	cycle_count += elapsed() + delay_adj;
 
-	/* Expresed as a delta from last announcement */
-	delay = delay + (now - announced_cycles);
-
-	/* Round up to nearest tick boundary */
+	/* Round delay up to next tick boundary */
+	delay = delay + (cycle_count - announced_cycles);
 	delay = ((delay + CYC_PER_TICK - 1) / CYC_PER_TICK) * CYC_PER_TICK;
-
-	/* Back to delta from now */
-	last_load = delay - (now - announced_cycles);
-
-	ll0 = last_load;
-	reset_overflow();
-	cycle_count = now;
+	ll0 = last_load = delay - (cycle_count - announced_cycles);
 
 	compiler_barrier();
 	val1 = SysTick->VAL & COUNTER_MAX;
@@ -143,20 +136,6 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 #endif
 }
 
-// FIXME: the -announced bit is redundant with / undone by cycle_get_32()
-static u32_t elapsed(void)
-{
-	// FIXME: read from VAL and CTRL is nonatomic, might span an
-	// overflow
-	u32_t val = SysTick->VAL & COUNTER_MAX;
-	u32_t cyc = cycle_count - announced_cycles;
-
-	ctrl_cache |= SysTick->CTRL;
-	u32_t ov = (ctrl_cache & SysTick_CTRL_COUNTFLAG_Msk) ? last_load : 0;
-
-	return (last_load - val) + cyc + ov;
-}
-
 u32_t z_clock_elapsed(void)
 {
 	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
@@ -164,16 +143,16 @@ u32_t z_clock_elapsed(void)
 	}
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	u32_t ret = elapsed();
+	u32_t cyc = elapsed() + cycle_count - announced_cycles;
 
 	k_spin_unlock(&lock, key);
-	return ret / CYC_PER_TICK;
+	return cyc / CYC_PER_TICK;
 }
 
 u32_t _timer_cycle_get_32(void)
 {
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	u32_t ret = elapsed() + announced_cycles;
+	u32_t ret = elapsed() + cycle_count;
 
 	k_spin_unlock(&lock, key);
 
