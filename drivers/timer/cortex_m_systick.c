@@ -23,20 +23,13 @@ void _ExcExit(void);
 
 static struct k_spinlock lock;
 
-/* Last value placed in LOAD register (else "TIMER_STOPPED") */
 static u32_t last_load;
 
-/* Running count of accumulated cycles */
 static u32_t cycle_count;
 
 static u32_t announced_cycles;
 
-// FIXME: need to add this to cycle_count whenever we reset the
-// counter, right now it only does it for expired timeouts.
-static u32_t delay_adj;
-
-/* OR-accumulated cache of the CTRL register for testing overflow */
-static volatile u32_t ctrl_cache;
+static volatile u32_t ctrl_cache; /* overflow bit clears on read! */
 
 static u32_t elapsed(void)
 {
@@ -58,7 +51,7 @@ void _timer_int_handler(void *arg)
 	u32_t dticks;
 	k_spinlock_key_t key = k_spin_lock(&lock);
 
-	cycle_count += last_load + delay_adj;
+	cycle_count += last_load;
 	dticks = (cycle_count - announced_cycles) / CYC_PER_TICK;
 	announced_cycles += dticks * CYC_PER_TICK;
 
@@ -67,7 +60,6 @@ void _timer_int_handler(void *arg)
 
 	k_spin_unlock(&lock, key);
 
-	__ASSERT(cycle_count - announced_cycles < 1000, "");
 	z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : 1);
 	_ExcExit();
 }
@@ -101,7 +93,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	}
 
 #ifdef CONFIG_TICKLESS_KERNEL
-	u32_t val0, val1, delay, ll0;
+	u32_t delay;
 
 	ticks = min(MAX_TICKS, max(ticks - 1, 0));
 
@@ -110,29 +102,16 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
 
-	/* Get current time as soon as we take the lock */
-	val0 = SysTick->VAL & COUNTER_MAX;
-	cycle_count += elapsed() + delay_adj;
+	cycle_count += elapsed();
 
 	/* Round delay up to next tick boundary */
 	delay = delay + (cycle_count - announced_cycles);
 	delay = ((delay + CYC_PER_TICK - 1) / CYC_PER_TICK) * CYC_PER_TICK;
-	ll0 = last_load = delay - (cycle_count - announced_cycles);
+	last_load = delay - (cycle_count - announced_cycles);
 
-	compiler_barrier();
-	val1 = SysTick->VAL & COUNTER_MAX;
 	SysTick->LOAD = last_load;
 	SysTick->VAL = 0; /* resets timer to last_load */
-	compiler_barrier();
 
-	/* We check time at the end to account for lost cycles during
-	 * this computation that the clock didn't "see".  Keep the
-	 * delta computed for this timeout, but add the adjustment
-	 * back to the cycle counter when it expires.  Note that the
-	 * count may have rolled over while we worked, the hardware
-	 * clock doesn't honor spinlocks!
-	 */
-	delay_adj = 0; //val0 > val1 ? val0 - val1 : ll0 - (val1 - val0);
 	k_spin_unlock(&lock, key);
 #endif
 }
@@ -156,11 +135,6 @@ u32_t _timer_cycle_get_32(void)
 	u32_t ret = elapsed() + cycle_count;
 
 	k_spin_unlock(&lock, key);
-
-	static u32_t LAST; //DEBUG
-	__ASSERT(LAST <= ret, "kcyc %d -> %d\n", LAST, ret);
-	LAST = ret;
-
 	return ret;
 }
 
