@@ -67,6 +67,7 @@ void _timer_int_handler(void *arg)
 
 	k_spin_unlock(&lock, key);
 
+	__ASSERT(cycle_count - announced_cycles < 1000, "");
 	z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : 1);
 	_ExcExit();
 }
@@ -131,7 +132,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	 * count may have rolled over while we worked, the hardware
 	 * clock doesn't honor spinlocks!
 	 */
-	delay_adj += val0 > val1 ? val0 - val1 : ll0 - (val1 - val0);
+	delay_adj = 0; //val0 > val1 ? val0 - val1 : ll0 - (val1 - val0);
 	k_spin_unlock(&lock, key);
 #endif
 }
