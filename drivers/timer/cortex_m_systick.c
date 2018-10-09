@@ -154,10 +154,6 @@ static u32_t elapsed(void)
 	ctrl_cache |= SysTick->CTRL;
 	u32_t ov = (ctrl_cache & SysTick_CTRL_COUNTFLAG_Msk) ? last_load : 0;
 
-	// If we see an overflow, it better be in the first 2% of a
-	// tick!
-	__ASSERT(!ov || k_is_in_isr() || (last_load - val < 2400), ""); //DEBUG
-
 	return (last_load - val) + cyc + ov;
 }
 
