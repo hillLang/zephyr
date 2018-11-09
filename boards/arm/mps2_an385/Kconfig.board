@@ -4,6 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# Note: the MPS2 is a real hardware board, but this target runs under
+# qemu as part of our test suite and needs to be compiled with the
+# relevant workarounds.
+
 config BOARD_MPS2_AN385
+	select QEMU_TICKLESS_WORKAROUND
 	bool "ARM Cortex-M3 SMM on V2M-MPS2 (Application Note AN385)"
 	depends on SOC_MPS2_AN385
