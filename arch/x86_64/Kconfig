@@ -1,5 +1,3 @@
-source "arch/x86_64/soc/*/Kconfig.soc"
-
 config ARCH
        default "x86_64"
 

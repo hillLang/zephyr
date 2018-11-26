@@ -75,7 +75,6 @@ static void irq_offload_handler(void *arg, int err)
 	ARG_UNUSED(err);
 	offload_fn(offload_arg);
 }
-#endif
 
 void irq_offload(irq_offload_routine_t fn, void *arg)
 {
@@ -89,6 +88,7 @@ void irq_offload(irq_offload_routine_t fn, void *arg)
 		.shorthand = SELF,
 	};
 }
+#endif
 
 /* Called from xuk layer on actual CPU start */
 void _cpu_start(int cpu)

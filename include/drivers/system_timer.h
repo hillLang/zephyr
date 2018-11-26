@@ -121,7 +121,11 @@ extern void z_clock_announce(s32_t ticks);
  * this with appropriate locking, the driver needs only provide an
  * instantaneous answer.
  */
+#ifdef CONFIG_TICKLESS_KERNEL
 extern u32_t z_clock_elapsed(void);
+#else
+static inline u32_t z_clock_elapsed(void) { return 0; }
+#endif
 
 #ifdef __cplusplus
 }
