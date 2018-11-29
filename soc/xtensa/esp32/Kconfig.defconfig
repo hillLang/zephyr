@@ -18,4 +18,7 @@ config XTENSA_ASM2
 config MP_NUM_CPUS
 	default 2
 
+config NEWLIB_LIBC_AVAILABLE
+	default n
+
 endif

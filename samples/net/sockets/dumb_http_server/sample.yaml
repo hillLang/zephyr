@@ -3,7 +3,7 @@ sample:
   name: socket_dumb_http_server
 tests:
   test:
-    platform_exclude: esp32
+    filter: CONFIG_NEWLIB_LIBC_AVAILABLE
     harness: net
     min_ram: 32
     tags: net

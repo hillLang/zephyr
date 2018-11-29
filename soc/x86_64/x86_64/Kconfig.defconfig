@@ -6,4 +6,9 @@ config SOC
 config USE_SWITCH
 	default y
 
+# We aren't part of the SDK yet, so default this to false so CI knows
+# not to try the newlib tests.
+config NEWLIB_LIBC_AVAILABLE
+	default n
+
 endif

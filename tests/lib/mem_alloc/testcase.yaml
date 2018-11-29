@@ -5,5 +5,5 @@ tests:
     tags: clib minimal_libc
   libraries.libc.newlib:
     extra_args: CONF_FILE=prj_newlib.conf
-    arch_exclude: posix
+    filter: CONFIG_NEWLIB_LIBC_AVAILABLE
     tags: clib newlib
