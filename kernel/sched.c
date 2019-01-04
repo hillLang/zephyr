@@ -217,6 +217,15 @@ static struct k_thread *next_up(void)
 static int slice_time;
 static int slice_max_prio;
 
+#ifdef CONFIG_SWAP_NONATOMIC
+/* If _Swap() isn't atomic, then it's possible for a timer interrupt
+ * to try to timeslice away _current after it has already pended
+ * itself but before the corresponding context switch.  Treat that as
+ * a noop condition in z_time_slice().
+ */
+static bool pending_current;
+#endif
+
 static void reset_time_slice(void)
 {
 	/* Add the elapsed time since the last announced tick to the
@@ -249,6 +258,14 @@ static inline int sliceable(struct k_thread *t)
 /* Called out of each timer interrupt */
 void z_time_slice(int ticks)
 {
+#ifdef CONFIG_SWAP_NONATOMIC
+	if (pending_current) {
+		pending_current = false;
+		return;
+	}
+	pending_current = false;
+#endif
+
 	if (slice_time && sliceable(_current)) {
 		if (ticks >= _current_cpu->slice_ticks) {
 			_move_thread_to_end_of_prio_q(_current);
@@ -389,6 +406,9 @@ void z_thread_timeout(struct _timeout *to)
 
 int _pend_current_thread(u32_t key, _wait_q_t *wait_q, s32_t timeout)
 {
+#if defined(CONFIG_TIMESLICING) && defined(CONFIG_SWAP_NONATOMIC)
+	pending_current = true;
+#endif
 	pend(_current, wait_q, timeout);
 	return _Swap(key);
 }
