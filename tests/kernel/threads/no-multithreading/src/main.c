@@ -6,6 +6,10 @@
 #include <zephyr.h>
 #include <ztest.h>
 
+#ifdef CONFIG_BOARD_NATIVE_POSIX
+#error Build failure!
+#endif
+
 /* The only point to CONFIG_MULTITHREADING=n is to use Zephyr's
  * multiplatform toolchain, linkage and boostrap integration to arrive
  * here so the user can run C code unimpeded.  In general, we don't
@@ -16,5 +20,5 @@
 void test_main(void)
 {
 	TC_PRINT("It works\n");
-	TC_END_REPORT(TC_PASS);
+	TC_END_REPORT(IS_ENABLED(CONFIG_X86) ? TC_FAIL : TC_PASS);
 }

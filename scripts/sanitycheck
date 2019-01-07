@@ -202,6 +202,7 @@ sys.path.insert(0, os.path.join(ZEPHYR_BASE, "scripts/"))
 
 
 VERBOSE = 0
+RETRY_PASSES = 3
 LAST_SANITY = os.path.join(ZEPHYR_BASE, "scripts", "sanity_chk",
                            "last_sanity.csv")
 LAST_SANITY_XUNIT = os.path.join(ZEPHYR_BASE, "scripts", "sanity_chk",
@@ -1085,7 +1086,7 @@ class MakeGenerator:
         else:
             verbose("Skipping slow test: " + ti.name)
 
-    def execute(self, callback_fn=None, context=None):
+    def execute(self, callback_fn=None, context=None, targets = ["all"]):
         """Execute all the registered build goals
 
         @param callback_fn If not None, a callback function will be called
@@ -1108,7 +1109,7 @@ class MakeGenerator:
             tf.write("all: %s\n" % (" ".join(self.goals.keys())))
             tf.flush()
 
-            cmd = ["make", "-k", "-j", str(JOBS), "-f", tf.name, "all"]
+            cmd = ["make", "-k", "-j", str(JOBS), "-f", tf.name] + targets
 
             # assure language neutral environemnt
             make_env = os.environ.copy()
@@ -1651,7 +1652,7 @@ class TestSuite:
         self.platforms = []
         self.outdir = os.path.abspath(outdir)
         self.instances = {}
-        self.goals = None
+        self.goals = {}
         self.discards = None
         self.load_errors = 0
 
@@ -1716,6 +1717,26 @@ class TestSuite:
             self.arches[a] = arch
 
         self.instances = {}
+
+    # Semi-infuriating: the only way to get back from a test ID string
+    # (i.e. make target) to the configuration used to generate it is
+    # to parse it and then enumerate all the Platform objects looking
+    # for a matching board.  So this need_retry() predicate builds and
+    # maintains a cache of known tests
+    testparse_re = re.compile('^([^/]*)/(.*)')
+    retry_goals = {}
+
+    def need_retry(self, test):
+        if test in self.retry_goals:
+            return self.retry_goals[test]
+        m = TestSuite.testparse_re.match(test);
+        board, target = m.groups();
+        for arch in self.arches:
+            for plat in self.arches[arch].platforms:
+                if plat.name == board and plat in self.testcases[target].defconfig:
+                    dc = self.testcases[target].defconfig[plat]
+                    self.retry_goals[test] = "CONFIG_TEST_SANITY_RETRY" in dc
+                    return self.retry_goals[test]
 
     def get_last_failed(self):
 
@@ -2095,7 +2116,7 @@ class TestSuite:
         for ti in ti_list:
             self.instances[ti.name] = ti
 
-    def execute(self, cb, cb_context):
+    def execute(self, cb, cb_context, targets):
 
         def calc_one_elf_size(name, goal):
             if not goal.failed:
@@ -2113,7 +2134,14 @@ class TestSuite:
         mg = MakeGenerator(self.outdir)
         for i in self.instances.values():
             mg.add_test_instance(i, options.extra_args)
-        self.goals = mg.execute(cb, cb_context)
+
+        results = mg.execute(cb, cb_context, targets)
+
+        if "all" in targets:
+            self.goals = results
+        else:
+            for t in targets:
+                self.goals[t] = results[t];
 
         if not options.disable_size_report:
             # Parallelize size calculation
@@ -2671,25 +2699,36 @@ def log_info(filename):
     else:
         info("\tsee: " + COLOR_YELLOW + filename + COLOR_NORMAL)
 
+def test_cb_state(goals, goal):
+    global total_done, total_failed
 
-def terse_test_cb(instances, goals, goal):
+    changed = False
     total_tests = len(goals)
-    total_done = 0
-    total_failed = 0
+    will_retry = curr_ts.retry_pass < (RETRY_PASSES - 1) and curr_ts.need_retry(goal.name)
 
-    for k, g in goals.items():
-        if g.finished:
-            total_done += 1
-        if g.failed:
+    if goal.finished and not (goal.failed and will_retry):
+        changed = True
+        total_done += 1
+        if goal.failed and not will_retry:
             total_failed += 1
 
-    if goal.failed:
+    return (changed, total_tests, total_done, total_failed)
+
+def terse_test_cb(instances, goals, goal):
+    changed, total_tests, total_done, total_failed = test_cb_state(goals, goal)
+
+    if not changed:
+        return
+
+    retried = curr_ts.retry_pass > 0
+
+    if goal.failed or (goal.finished and retried):
         i = instances[goal.name]
-        info(
-            "\n\n{:<25} {:<50} {}FAILED{}: {}".format(
+        info("\n\n{:<25} {:<50} {}{}{}: {}".format(
                 i.platform.name,
                 i.test.name,
-                COLOR_RED,
+                COLOR_RED if goal.failed else COLOR_YELLOW,
+                "FAILED" if goal.failed else "OK_RETRIED",
                 COLOR_NORMAL,
                 goal.reason))
         log_info(goal.get_error_log())
@@ -2710,13 +2749,7 @@ def chatty_test_cb(instances, goals, goal):
     if VERBOSE < 2 and not goal.finished:
         return
 
-    total_tests = len(goals)
-    total_tests_width = len(str(total_tests))
-    total_done = 0
-
-    for k, g in goals.items():
-        if g.finished:
-            total_done += 1
+    changed, total_tests, total_done, total_failed = test_cb_state(goals, goal)
 
     if goal.failed:
         status = COLOR_RED + "FAILED" + COLOR_NORMAL + ": " + goal.reason
@@ -2724,6 +2757,8 @@ def chatty_test_cb(instances, goals, goal):
         status = COLOR_GREEN + "PASSED" + COLOR_NORMAL
     else:
         status = goal.make_state
+
+    total_tests_width = len(str(total_tests))
 
     info("{:>{}}/{} {:<25} {:<50} {}".format(
         total_done, total_tests_width, total_tests, i.platform.name,
@@ -2836,6 +2871,9 @@ def main():
                               os.path.join(ZEPHYR_BASE, "samples")]
 
     ts = TestSuite(options.board_root, options.testcase_root, options.outdir)
+
+    global curr_ts
+    curr_ts = ts
 
     if ts.load_errors:
         sys.exit(1)
@@ -2979,15 +3017,26 @@ def main():
     if options.dry_run:
         return
 
-    if VERBOSE or not TERMINAL:
-        goals = ts.execute(
-            chatty_test_cb,
-            ts.instances)
-    else:
-        goals = ts.execute(
-            terse_test_cb,
-            ts.instances)
-        info("")
+    global total_done, total_failed
+    total_done = 0
+    total_failed = 0
+    callback = chatty_test_cb if VERBOSE or not TERMINAL else terse_test_cb
+
+    retry = ["all"]
+    for ts.retry_pass in range(RETRY_PASSES):
+        if ts.retry_pass > 0:
+            verbose("Retrying marked failures, pass #" + str(ts.retry_pass + 1))
+        goals = ts.execute(callback, ts.instances, retry)
+        if ts.retry_pass == RETRY_PASSES - 1 and callback == terse_test_cb:
+            info("")
+
+        retry = []
+        for target, goal in goals.items():
+            if goal.failed and goal.reason != "build_error":
+                if ts.need_retry(target):
+                    retry.append(target)
+        if not len(retry):
+            break
 
     if options.detailed_report:
         ts.testcase_target_report(options.detailed_report)

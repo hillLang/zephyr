@@ -67,4 +67,11 @@ config TEST_FLASH_DRIVERS
 	help
 	  This option will help test the flash drivers. This should be enabled
 	  only when using qemu_x86.
+
+config TEST_SANITY_RETRY
+	bool "Retry test with spurious failures"
+	help
+	  If true, sanitycheck will assume this test is subject to
+	  spurious failures and will automatically retry failed
+	  attempts.
 endmenu
