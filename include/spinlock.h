@@ -77,6 +77,7 @@ static ALWAYS_INLINE k_spinlock_key_t k_spin_lock(struct k_spinlock *l)
 static ALWAYS_INLINE void k_spin_unlock(struct k_spinlock *l,
 					k_spinlock_key_t key)
 {
+	ARG_UNUSED(l);
 #ifdef SPIN_VALIDATE
 	__ASSERT(z_spin_unlock_valid(l), "Not my spinlock!");
 #endif
@@ -99,6 +100,7 @@ static ALWAYS_INLINE void k_spin_unlock(struct k_spinlock *l,
  */
 static ALWAYS_INLINE void k_spin_release(struct k_spinlock *l)
 {
+	ARG_UNUSED(l);
 #ifdef SPIN_VALIDATE
 	__ASSERT(z_spin_unlock_valid(l), "Not my spinlock!");
 #endif
