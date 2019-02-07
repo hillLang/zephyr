@@ -5,8 +5,8 @@
  */
 
 #include <ztest.h>
+#include "test_sched.h"
 
-#define STACK_SIZE (384 + CONFIG_TEST_EXTRA_STACKSIZE)
 /* nrf 51 has lower ram, so creating less number of threads */
 #if CONFIG_SRAM_SIZE <= 24
 	#define NUM_THREAD 2
