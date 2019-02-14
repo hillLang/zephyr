@@ -72,15 +72,15 @@ void *_isr_exit_restore_stack(void *interrupted)
 struct {
 	void (*fn)(int, void*);
 	void *arg;
-	unsigned int esp;
 } cpu_init[CONFIG_MP_NUM_CPUS];
 
 /* Called from Zephyr initialization */
 void _arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 		     void (*fn)(int, void *), void *arg)
 {
+	xuk_start_cpu(cpu_num, (int)(sz + (char *)stack));
+
 	cpu_init[cpu_num].arg = arg;
-	cpu_init[cpu_num].esp = (int)(long)(sz + (char *)stack);
 
 	/* This is our flag to the spinning CPU.  Do this last */
 	cpu_init[cpu_num].fn = fn;
@@ -153,15 +153,6 @@ void _cpu_start(int cpu)
 	/* Spin forever as a fallback */
 	while (1) {
 	}
-}
-
-/* Returns the initial stack to use for CPU startup on auxiliary (not
- * cpu 0) processors to the xuk layer, which gets selected by the
- * non-arch Zephyr kernel and stashed by _arch_start_cpu()
- */
-unsigned int _init_cpu_stack(int cpu)
-{
-	return cpu_init[cpu].esp;
 }
 
 int _arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
