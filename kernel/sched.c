@@ -353,8 +353,8 @@ void _remove_thread_from_ready_q(struct k_thread *thread)
 		if (_is_thread_queued(thread)) {
 			_priq_run_remove(&_kernel.ready_q.runq, thread);
 			_mark_thread_as_not_queued(thread);
-			update_cache(thread == _current);
 		}
+		update_cache(thread == _current);
 	}
 }
 
