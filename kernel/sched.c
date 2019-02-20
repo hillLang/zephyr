@@ -560,6 +560,18 @@ struct k_thread *_get_next_ready_thread(void)
 }
 #endif
 
+/* Just a wrapper around _current = xxx with tracing */
+static inline void set_current(struct k_thread *new_thread)
+{
+#ifdef CONFIG_TRACING
+	sys_trace_thread_switched_out();
+#endif
+	_current = new_thread;
+#ifdef CONFIG_TRACING
+	sys_trace_thread_switched_in();
+#endif
+}
+
 #ifdef CONFIG_USE_SWITCH
 void *_get_next_switch_handle(void *interrupted)
 {
@@ -572,24 +584,11 @@ void *_get_next_switch_handle(void *interrupted)
 		if (_current != th) {
 			reset_time_slice();
 			_current_cpu->swap_ok = 0;
-#ifdef CONFIG_TRACING
-			sys_trace_thread_switched_out();
-#endif
-			_current = th;
-#ifdef CONFIG_TRACING
-			sys_trace_thread_switched_in();
-#endif
+			set_current(th);
 		}
 	}
-
 #else
-#ifdef CONFIG_TRACING
-	sys_trace_thread_switched_out();
-#endif
-	_current = _get_next_ready_thread();
-#ifdef CONFIG_TRACING
-	sys_trace_thread_switched_in();
-#endif
+	set_current(_get_next_ready_thread());
 #endif
 
 	/* Some architectures don't have a working IPI, so the best we
