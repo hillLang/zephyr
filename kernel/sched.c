@@ -867,12 +867,16 @@ void _impl_k_yield(void)
 
 	if (!_is_idle(_current)) {
 		LOCKED(&sched_lock) {
-			_priq_run_remove(&_kernel.ready_q.runq, _current);
-			_priq_run_add(&_kernel.ready_q.runq, _current);
+			if (!IS_ENABLED(CONFIG_SMP) ||
+			    _is_thread_queued(_current)) {
+				_priq_run_remove(&_kernel.ready_q.runq,
+						 _current);
+				_priq_run_add(&_kernel.ready_q.runq,
+					      _current);
+			}
 			update_cache(1);
 		}
 	}
-
 	_Swap_unlocked();
 }
 
