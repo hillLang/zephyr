@@ -59,6 +59,10 @@ static ALWAYS_INLINE unsigned int do_swap(unsigned int key,
 
 	if (is_spinlock) {
 		k_spin_release(lock);
+#ifdef SPIN_VALIDATE
+		__ASSERT(_current_cpu->spin_depth == 0,
+			 "Swapping with spinlock held!");
+#endif
 	}
 
 	new_thread = _get_next_ready_thread();
@@ -142,6 +146,10 @@ static inline int _Swap_irqlock(unsigned int key)
 static ALWAYS_INLINE int _Swap(struct k_spinlock *lock, k_spinlock_key_t key)
 {
 	k_spin_release(lock);
+#ifdef SPIN_VALIDATE
+	__ASSERT(_current_cpu->spin_depth == 0,
+		 "Swapping with spinlock held!");
+#endif
 	return _Swap_irqlock(key.key);
 }
 
