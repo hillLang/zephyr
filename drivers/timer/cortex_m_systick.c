@@ -38,10 +38,8 @@ static u32_t elapsed(void)
 {
 	u32_t val, ov;
 
-	do {
-		val = SysTick->VAL & COUNTER_MAX;
-		ctrl_cache |= SysTick->CTRL;
-	} while (SysTick->VAL > val);
+	val = SysTick->VAL & COUNTER_MAX;
+	ctrl_cache |= SysTick->CTRL;
 
 	ov = (ctrl_cache & SysTick_CTRL_COUNTFLAG_Msk) ? last_load : 0;
 	return (last_load - val) + ov;
@@ -96,7 +94,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	ticks = MIN(MAX_TICKS, MAX(ticks - 1, 0));
 
 	/* Desired delay in the future */
-	delay = (ticks == 0) ? MIN_DELAY : ticks * CYC_PER_TICK;
+	delay = ticks * CYC_PER_TICK;
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
 
@@ -105,6 +103,9 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	/* Round delay up to next tick boundary */
 	delay = delay + (cycle_count - announced_cycles);
 	delay = ((delay + CYC_PER_TICK - 1) / CYC_PER_TICK) * CYC_PER_TICK;
+	if (delay < MIN_DELAY) {
+		delay += CYC_PER_TICK;
+	}
 	last_load = delay - (cycle_count - announced_cycles);
 
 	SysTick->LOAD = last_load;

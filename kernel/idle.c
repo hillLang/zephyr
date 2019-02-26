@@ -119,7 +119,6 @@ void _sys_power_save_idle_exit(s32_t ticks)
 	z_clock_idle_exit();
 }
 
-
 #if K_IDLE_PRIO < 0
 #define IDLE_YIELD_IF_COOP() k_yield()
 #else
