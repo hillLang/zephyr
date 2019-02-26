@@ -281,16 +281,16 @@ static inline int sliceable(struct k_thread *t)
 /* Called out of each timer interrupt */
 void z_time_slice(int ticks)
 {
+	if (slice_time && sliceable(_current)) {
 #ifdef CONFIG_SWAP_NONATOMIC
-	if (pending_current == _current) {
+		if (pending_current == _current) {
+			pending_current = NULL;
+			reset_time_slice();
+			return;
+		}
 		pending_current = NULL;
-		reset_time_slice();
-		return;
-	}
-	pending_current = NULL;
 #endif
 
-	if (slice_time && sliceable(_current)) {
 		if (ticks >= _current_cpu->slice_ticks) {
 			_move_thread_to_end_of_prio_q(_current);
 			reset_time_slice();
