@@ -172,6 +172,7 @@ SECTION_FUNC(TEXT, _arm_do_syscall)
     /*
      * r0-r5 contain arguments
      * r6 contains call_id
+     * r7 contains the current thread
      * r8 contains original LR
      */
     ldr ip, =K_SYSCALL_BAD
@@ -187,9 +188,7 @@ SECTION_FUNC(TEXT, _arm_do_syscall)
 valid_syscall:
     /* setup privileged stack */
     push {r6}
-    ldr r6, =_kernel
-    ldr r6, [r6, #_kernel_offset_to_current]
-    ldr ip, [r6, #_thread_offset_to_priv_stack_start]    /* priv stack ptr */
+    ldr ip, [r7, #_thread_offset_to_priv_stack_start]    /* priv stack ptr */
     ldr r6, =CONFIG_PRIVILEGED_STACK_SIZE
     add ip, r6
     pop {r6}
@@ -211,9 +210,7 @@ valid_syscall:
 #if defined(CONFIG_BUILTIN_STACK_GUARD)
     /* Set stack pointer limit (needed in privileged mode) */
     push {r6}
-    ldr r6, =_kernel
-    ldr r6, [r6, #_kernel_offset_to_current]
-    ldr r6, [r6, #_thread_offset_to_priv_stack_start]    /* priv stack ptr */
+    ldr r6, [r7, #_thread_offset_to_priv_stack_start]    /* priv stack ptr */
     msr PSPLIM, r6
     pop {r6}
 #endif

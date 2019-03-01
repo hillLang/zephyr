@@ -421,6 +421,10 @@ valid_syscall_id:
     bic r2, #1
     msr CONTROL, r2
 
+    /* _current goes into R7 for _arm_do_syscall() */
+    ldr r7, =_kernel
+    ldr r7, [r7, #_kernel_offset_to_current]
+
     /* ISB is not strictly necessary here (stack pointer is not being
      * touched), but it's recommended to avoid executing pre-fetched
      * instructions with the previous privilege.
