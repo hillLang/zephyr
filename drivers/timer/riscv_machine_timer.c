@@ -13,11 +13,12 @@
 #define MAX_TICKS ((0xffffffffu - CYC_PER_TICK) / CYC_PER_TICK)
 #define MIN_DELAY 1000
 
-#define TICKLESS (IS_ENABLED(CONFIG_TICKLESS_KERNEL) &&		\
-		  !IS_ENABLED(CONFIG_QEMU_TICKLESS_WORKAROUND))
-
 static struct k_spinlock lock;
-static u64_t last_count;
+static volatile u64_t last_count;
+
+#ifdef CONFIG_QEMU_TARGET
+static volatile u64_t expect_expire;
+#endif
 
 static void set_mtimecmp(u64_t time)
 {
@@ -54,11 +55,28 @@ static void timer_isr(void *arg)
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
 	u64_t now = mtime();
+
+#ifdef CONFIG_QEMU_TARGET
+	/* Qemu exposes a real-world clock time to us, which is useful
+	 * for most things, but has the side effect that, when the
+	 * qemu process is descheduled by the host OS (for example,
+	 * during a big loaded test run) the guest appears to "time
+	 * warp" ahead and interrupts can arrive very late.  Assume
+	 * that any interrupt arriving later than half a tick short of
+	 * the expected time was "on time" and skew our internal clock
+        * references to reflect that.
+        */
+	if ((int)(now - expect_expire) > -(CYC_PER_TICK / 2)) {
+		last_count = now - (expect_expire - last_count);
+		expect_expire = now + 0x7fffffff;
+	}
+#endif
+
 	u32_t dticks = (u32_t)((now - last_count) / CYC_PER_TICK);
 
 	last_count += dticks * CYC_PER_TICK;
 
-	if (!TICKLESS) {
+	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		u64_t next = last_count + CYC_PER_TICK;
 
 		if ((s64_t)(next - now) < MIN_DELAY) {
@@ -83,7 +101,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 {
 	ARG_UNUSED(idle);
 
-#if defined(CONFIG_TICKLESS_KERNEL) && !defined(CONFIG_QEMU_TICKLESS_WORKAROUND)
+#if defined(CONFIG_TICKLESS_KERNEL)
 	/* RISCV has no idle handler yet, so if we try to spin on the
 	 * logic below to reset the comparator, we'll always bump it
 	 * forward to the "next tick" due to MIN_DELAY handling and
@@ -110,6 +128,10 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	if ((s32_t)(cyc + last_count - now) < MIN_DELAY) {
 		cyc += CYC_PER_TICK;
 	}
+
+#ifdef CONFIG_QEMU_TARGET
+	expect_expire = cyc;
+#endif
 
 	set_mtimecmp(cyc + last_count);
 	k_spin_unlock(&lock, key);

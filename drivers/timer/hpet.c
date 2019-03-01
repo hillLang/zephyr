@@ -31,19 +31,39 @@
 static struct k_spinlock lock;
 static unsigned int max_ticks;
 static unsigned int cyc_per_tick;
-static unsigned int last_count;
+static volatile unsigned int last_count;
+
+#ifdef CONFIG_QEMU_TARGET
+static volatile unsigned int expect_expire;
+#endif
 
 static void hpet_isr(void *arg)
 {
 	ARG_UNUSED(arg);
 	k_spinlock_key_t key = k_spin_lock(&lock);
 	u32_t now = MAIN_COUNTER_REG;
+
+#ifdef CONFIG_QEMU_TARGET
+	/* Qemu exposes a real-world clock time to us, which is useful
+	 * for most things, but has the side effect that, when the
+	 * qemu process is descheduled by the host OS (for example,
+	 * during a big loaded test run) the guest appears to "time
+	 * warp" ahead and interrupts can arrive very late.  Assume
+	 * that any interrupt arriving later than half a tick short of
+	 * the expected time was "on time" and skew our internal clock
+	 * references to reflect that.
+	 */
+	if ((int)(now - expect_expire) > -(cyc_per_tick / 2)) {
+		last_count = now - (expect_expire - last_count);
+		expect_expire = now + 0x7fffffff;
+	}
+#endif
+
 	u32_t dticks = (now - last_count) / cyc_per_tick;
 
 	last_count += dticks * cyc_per_tick;
 
-	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL) ||
-	    IS_ENABLED(CONFIG_QEMU_TICKLESS_WORKAROUND)) {
+	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		u32_t next = last_count + cyc_per_tick;
 
 		if ((s32_t)(next - now) < MIN_DELAY) {
@@ -102,7 +122,7 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 {
 	ARG_UNUSED(idle);
 
-#if defined(CONFIG_TICKLESS_KERNEL) && !defined(CONFIG_QEMU_TICKLESS_WORKAROUND)
+#if defined(CONFIG_TICKLESS_KERNEL)
 	if (ticks == K_FOREVER && idle) {
 		GENERAL_CONF_REG &= ~GCONF_ENABLE;
 		return;
@@ -122,6 +142,10 @@ void z_clock_set_timeout(s32_t ticks, bool idle)
 	if ((cyc - now) < MIN_DELAY) {
 		cyc += cyc_per_tick;
 	}
+
+#ifdef CONFIG_QEMU_TARGET
+	expect_expire = cyc;
+#endif
 
 	TIMER0_COMPARATOR_REG = cyc;
 	k_spin_unlock(&lock, key);
