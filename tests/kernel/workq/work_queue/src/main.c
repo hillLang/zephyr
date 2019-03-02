@@ -346,6 +346,8 @@ static void coop_delayed_work_resubmit(void)
 {
 	int i;
 
+	k_sleep(1); /* align to ticks */
+
 	for (i = 0; i < NUM_TEST_ITEMS; i++) {
 		TC_PRINT(" - Resubmitting delayed work with 1 ms\n");
 		k_delayed_work_submit(&tests[0].work, 1);
