@@ -249,6 +249,7 @@ foreach(target ${qemu_targets})
     ${PRE_QEMU_COMMANDS}
     ${PRE_QEMU_COMMANDS_FOR_${target}}
     COMMAND
+    ${ZEPHYR_BASE}/scripts/qemu_runner.py
     ${QEMU}
     ${QEMU_FLAGS_${ARCH}}
     ${QEMU_FLAGS}
