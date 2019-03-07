@@ -263,4 +263,16 @@ foreach(target ${qemu_targets})
   if(DEFINED QEMU_KERNEL_FILE)
     add_dependencies(${target} qemu_kernel_target)
   endif()
+
+  # Write out the qemu command to a file for later tools.  Note this
+  # doesn't bother with QEMU_KERNEL_OPTION or PRE_QEMU_COMMANDS, which
+  # are $<> variables that expand only in the generated makefiles,
+  # sigh.  That's OK, I know what's what.  There are a few other
+  # unexpanded variables (AFAICT cmake does that automatically,
+  # leaving the ${} in place if it doesn't find the variable and then
+  # translating the logic to makish or ninjese later) in there too,
+  # but we'll just deal...
+  string(REPLACE ";" " " qemu_cmd
+    "${QEMU} ${QEMU_FLAGS_${ARCH}} ${QEMU_FLAGS} ${QEMU_EXTRA_FLAGS} ${MORE_FLAGS_FOR_${target}}")
+  file(WRITE ${CMAKE_BINARY_DIR}/qemu-cmd-${target} ${qemu_cmd})
 endforeach()

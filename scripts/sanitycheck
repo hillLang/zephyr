@@ -1286,6 +1286,11 @@ class MakeGenerator:
         do_run = not do_build_only
         skip_slow = ti.test.slow and not options.enable_slow
 
+        if ti.platform.qemu_support:
+            global qemu_dirs
+            qemu_dirs.write(ti.outdir + "\n");
+            qemu_dirs.flush()
+
         # FIXME: Need refactoring and cleanup
         type = None
         if ti.platform.qemu_support and do_run:
@@ -3110,6 +3115,7 @@ def main():
     global VERBOSE, INLINE_LOGS, JOBS, log_file
     global options
     global run_individual_tests
+    global qemu_dirs
     options = parse_arguments()
 
     if options.coverage:
@@ -3151,6 +3157,8 @@ def main():
         info("Cleaning output directory " + options.outdir)
         shutil.rmtree(options.outdir)
 
+    qemu_dirs = open("qemu_dirs.txt", "w")
+        
     if not options.testcase_root:
         options.testcase_root = [os.path.join(ZEPHYR_BASE, "tests"),
                               os.path.join(ZEPHYR_BASE, "samples")]
