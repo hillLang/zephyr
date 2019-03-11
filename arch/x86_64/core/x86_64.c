@@ -184,9 +184,9 @@ void _cpu_start(int cpu)
 	}
 }
 
-int _arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
-			      void (*routine)(void *parameter), void *parameter,
-			      u32_t flags)
+int z_arch_irq_connect_dynamic(unsigned int irq, unsigned int priority,
+			       void (*routine)(void *parameter), void *parameter,
+			       u32_t flags)
 {
 	ARG_UNUSED(flags);
 	__ASSERT(priority >= 2 && priority <= 15,

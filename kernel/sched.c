@@ -591,7 +591,7 @@ void *z_get_next_switch_handle(void *interrupted)
 			 * confused when the "wrong" thread tries to
 			 * release the lock.
 			 */
-			z_spin_lock_set_owner(&sched_lock);
+			z_spin_lock_set_owner(&sched_spinlock);
 #endif
 		}
 	}
@@ -884,10 +884,10 @@ void z_impl_k_yield(void)
 {
 	__ASSERT(!z_is_in_isr(), "");
 
-	if (!_is_idle(_current)) {
+	if (!is_idle(_current)) {
 		LOCKED(&sched_spinlock) {
 			if (!IS_ENABLED(CONFIG_SMP) ||
-			    _is_thread_queued(_current)) {
+			    z_is_thread_queued(_current)) {
 				_priq_run_remove(&_kernel.ready_q.runq,
 						 _current);
 				_priq_run_add(&_kernel.ready_q.runq,
@@ -991,7 +991,7 @@ void z_impl_k_wakeup(k_tid_t thread)
  */
 void z_sched_ipi(void)
 {
-	LOCKED(&sched_lock) {
+	LOCKED(&sched_spinlock) {
 		if (_current->base.thread_state & _THREAD_ABORTING) {
 			_current->base.thread_state |= _THREAD_DEAD;
 			_current_cpu->swap_ok = true;
@@ -1002,7 +1002,7 @@ void z_sched_ipi(void)
 void z_sched_abort(struct k_thread *thread)
 {
 	if (thread == _current) {
-		_remove_thread_from_ready_q(thread);
+		z_remove_thread_from_ready_q(thread);
 		return;
 	}
 
@@ -1019,11 +1019,11 @@ void z_sched_abort(struct k_thread *thread)
 	 * running on or because we caught it idle in the queue
 	 */
 	while ((thread->base.thread_state & _THREAD_DEAD) == 0) {
-		LOCKED(&sched_lock) {
-			if (_is_thread_queued(thread)) {
+		LOCKED(&sched_spinlock) {
+			if (z_is_thread_queued(thread)) {
 				_current->base.thread_state |= _THREAD_DEAD;
 				_priq_run_remove(&_kernel.ready_q.runq, thread);
-				_mark_thread_as_not_queued(thread);
+				z_mark_thread_as_not_queued(thread);
 			}
 		}
 	}
