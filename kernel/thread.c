@@ -336,15 +336,13 @@ Z_SYSCALL_HANDLER1_SIMPLE_VOID(k_thread_start, K_OBJ_THREAD, struct k_thread *);
 #endif
 
 #ifdef CONFIG_MULTITHREADING
-static void schedule_new_thread(struct k_thread *thread, s32_t delay)
+static void schedule_new_thread(struct k_thread *thread, k_timeout_t delay)
 {
 #ifdef CONFIG_SYS_CLOCK_EXISTS
-	if (delay == 0) {
+	if (K_TIMEOUT_EQ(delay, K_NO_WAIT)) {
 		k_thread_start(thread);
 	} else {
-		s32_t ticks = _TICK_ALIGN + z_ms_to_ticks(delay);
-
-		z_add_thread_timeout(thread, ticks);
+		z_add_thread_timeout(thread, delay);
 	}
 #else
 	ARG_UNUSED(delay);
@@ -488,7 +486,7 @@ k_tid_t z_impl_k_thread_create(struct k_thread *new_thread,
 			      k_thread_stack_t *stack,
 			      size_t stack_size, k_thread_entry_t entry,
 			      void *p1, void *p2, void *p3,
-			      int prio, u32_t options, s32_t delay)
+			      int prio, u32_t options, k_timeout_t delay)
 {
 	__ASSERT(!z_is_in_isr(), "Threads may not be created in ISRs");
 
@@ -502,7 +500,7 @@ k_tid_t z_impl_k_thread_create(struct k_thread *new_thread,
 	z_setup_new_thread(new_thread, stack, stack_size, entry, p1, p2, p3,
 			  prio, options, NULL);
 
-	if (delay != K_FOREVER) {
+	if (!K_TIMEOUT_EQ(delay, K_FOREVER)) {
 		schedule_new_thread(new_thread, delay);
 	}
 
@@ -718,9 +716,15 @@ void z_init_static_threads(void)
 	 */
 	k_sched_lock();
 	_FOREACH_STATIC_THREAD(thread_data) {
-		if (thread_data->init_delay != K_FOREVER) {
-			schedule_new_thread(thread_data->init_thread,
-					    thread_data->init_delay);
+		/* Note that init_delay is stored as a 32 bit quantity
+		 * in MS.  We can't easily convert to a timeout_t for
+		 * use in static data
+		 */
+		if (!K_TIMEOUT_EQ(K_TIMEOUT_TICKS(thread_data->init_delay),
+				  K_FOREVER)) {
+			k_timeout_t to = K_TIMEOUT_MS(thread_data->init_delay);
+
+			schedule_new_thread(thread_data->init_thread, to);
 		}
 	}
 	k_sched_unlock();

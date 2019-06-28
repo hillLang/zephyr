@@ -9,6 +9,26 @@
 
 /* Exhaustively enumerated, highly optimized time unit conversion API */
 
+#if defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME)
+__syscall int z_clock_hw_cycles_per_sec_runtime_get(void);
+
+static inline int z_impl_z_clock_hw_cycles_per_sec_runtime_get(void)
+{
+	extern int z_clock_hw_cycles_per_sec;
+
+	return z_clock_hw_cycles_per_sec;
+}
+#endif /* CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME */
+
+static inline int sys_clock_hw_cycles_per_sec(void)
+{
+#if defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME)
+	return z_clock_hw_cycles_per_sec_runtime_get();
+#else
+	return CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+#endif
+}
+
 /* Time converter generator gadget.  Selects from one of three
  * conversion algorithms: ones that take advantage when the
  * frequencies are an integer ratio (in either direction), or a full
@@ -28,9 +48,9 @@
  *    round_off - Return the nearest value to the resulting fraction
  *                (pass both round_up/off as false to get "round_down")
  */
-static ALWAYS_INLINE u64_t z_z_tmcvt(u64_t t, u32_t from_hz, u32_t to_hz,
-				     bool const_hz, bool result32,
-				     bool round_up, bool round_off)
+static ALWAYS_INLINE u64_t z_tmcvt(u64_t t, u32_t from_hz, u32_t to_hz,
+				   bool const_hz, bool result32,
+				   bool round_up, bool round_off)
 {
 	bool mul_ratio = const_hz &&
 		(to_hz > from_hz) && ((to_hz % from_hz) == 0);
@@ -111,7 +131,7 @@ static ALWAYS_INLINE u64_t z_z_tmcvt(u64_t t, u32_t from_hz, u32_t to_hz,
  *
  *                 my $hfrom = $human{$from_unit};
  *                 my $hto = $human{$to_unit};
- *                 print "/** \@brief Convert $hfrom to $hto\n";
+ *                 print "/", "** \@brief Convert $hfrom to $hto\n";
  *                 print " *\n";
  *                 print " * Converts time values in $hfrom to $hto.\n";
  *                 print " * Computes result in $sz bit precision.\n";
@@ -127,7 +147,7 @@ static ALWAYS_INLINE u64_t z_z_tmcvt(u64_t t, u32_t from_hz, u32_t to_hz,
  *                 print " *", "/\n";
  *
  *                 print "static inline $type $sym($type t)\n{\n\t";
- *                 print "/* Generated.  Do not edit.  See above. *", "/\n\t";
+ *                 print "/", "* Generated.  Do not edit.  See above. *", "/\n\t";
  *                 print "return tmcvt(t, Z_HZ_$from_unit, Z_HZ_$to_unit,";
  *                 print " $const_hz, $ret32, $rup, $roff);\n";
  *                 print "}\n\n";
@@ -144,7 +164,7 @@ static ALWAYS_INLINE u64_t z_z_tmcvt(u64_t t, u32_t from_hz, u32_t to_hz,
 #define Z_HZ_us 1000000
 #define Z_HZ_cyc sys_clock_hw_cycles_per_sec()
 #define Z_HZ_ticks CONFIG_SYS_CLOCK_TICKS_PER_SEC
-#define Z_CCYC (!CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME)
+#define Z_CCYC (!IS_ENABLED(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME))
 
 /** @brief Convert milliseconds to hardware cycles
  *
@@ -817,5 +837,7 @@ static inline u64_t k_ticks_to_cyc_ceil64(u64_t t)
 	/* Generated.  Do not edit.  See above. */
 	return z_tmcvt(t, Z_HZ_ticks, Z_HZ_cyc, Z_CCYC, false, true, false);
 }
+
+#include <syscalls/time_units.h>
 
 #endif /* ZEPHYR_INCLUDE_TIME_UNITS_H_ */

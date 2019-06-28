@@ -112,7 +112,7 @@ static void adjust_owner_prio(struct k_mutex *mutex, s32_t new_prio)
 	}
 }
 
-int z_impl_k_mutex_lock(struct k_mutex *mutex, s32_t timeout)
+int z_impl_k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
 {
 	int new_prio;
 	k_spinlock_key_t key;
@@ -139,7 +139,7 @@ int z_impl_k_mutex_lock(struct k_mutex *mutex, s32_t timeout)
 		return 0;
 	}
 
-	if (unlikely(timeout == (s32_t)K_NO_WAIT)) {
+	if (unlikely(K_TIMEOUT_EQ(timeout, K_NO_WAIT))) {
 		k_sched_unlock();
 		sys_trace_end_call(SYS_TRACE_ID_MUTEX_LOCK);
 		return -EBUSY;

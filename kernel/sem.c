@@ -130,9 +130,10 @@ void z_impl_k_sem_give(struct k_sem *sem)
 Z_SYSCALL_HANDLER1_SIMPLE_VOID(k_sem_give, K_OBJ_SEM, struct k_sem *);
 #endif
 
-int z_impl_k_sem_take(struct k_sem *sem, s32_t timeout)
+int z_impl_k_sem_take(struct k_sem *sem, k_timeout_t timeout)
 {
-	__ASSERT(((z_is_in_isr() == false) || (timeout == K_NO_WAIT)), "");
+	__ASSERT(((z_is_in_isr() == false)
+		  || K_TIMEOUT_EQ(timeout, K_NO_WAIT)), "");
 
 	sys_trace_void(SYS_TRACE_ID_SEMA_TAKE);
 	k_spinlock_key_t key = k_spin_lock(&lock);
@@ -144,7 +145,7 @@ int z_impl_k_sem_take(struct k_sem *sem, s32_t timeout)
 		return 0;
 	}
 
-	if (timeout == K_NO_WAIT) {
+	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		k_spin_unlock(&lock, key);
 		sys_trace_end_call(SYS_TRACE_ID_SEMA_TAKE);
 		return -EBUSY;

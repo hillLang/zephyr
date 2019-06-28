@@ -126,7 +126,7 @@ static inline void sys_mutex_init(struct sys_mutex *mutex)
 	k_mutex_init(&mutex->kernel_mutex);
 }
 
-static inline int sys_mutex_lock(struct sys_mutex *mutex, s32_t timeout)
+static inline int sys_mutex_lock(struct sys_mutex *mutex, k_timeout_t timeout)
 {
 	return k_mutex_lock(&mutex->kernel_mutex, timeout);
 }

@@ -313,13 +313,13 @@ static bool pipe_xfer_prepare(sys_dlist_t      *xfer_list,
 			       size_t            pipe_space,
 			       size_t            bytes_to_xfer,
 			       size_t            min_xfer,
-			       s32_t           timeout)
+			       k_timeout_t       timeout)
 {
 	struct k_thread  *thread;
 	struct k_pipe_desc *desc;
 	size_t num_bytes = 0;
 
-	if (timeout == K_NO_WAIT) {
+	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		_WAIT_Q_FOR_EACH(wait_q, thread) {
 			desc = (struct k_pipe_desc *)thread->base.swap_data;
 
@@ -424,7 +424,7 @@ static void pipe_thread_ready(struct k_thread *thread)
 int z_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 			 unsigned char *data, size_t bytes_to_write,
 			 size_t *bytes_written, size_t min_xfer,
-			 s32_t timeout)
+			 k_timeout_t timeout)
 {
 	struct k_thread    *reader;
 	struct k_pipe_desc *desc;
@@ -546,7 +546,7 @@ int z_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 	pipe_desc.buffer         = data + num_bytes_written;
 	pipe_desc.bytes_to_xfer  = bytes_to_write - num_bytes_written;
 
-	if (timeout != K_NO_WAIT) {
+	if (!K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		_current->base.swap_data = &pipe_desc;
 		/*
 		 * Lock interrupts and unlock the scheduler before
@@ -567,7 +567,7 @@ int z_pipe_put_internal(struct k_pipe *pipe, struct k_pipe_async *async_desc,
 }
 
 int z_impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
-		     size_t *bytes_read, size_t min_xfer, s32_t timeout)
+		     size_t *bytes_read, size_t min_xfer, k_timeout_t timeout)
 {
 	struct k_thread    *writer;
 	struct k_pipe_desc *desc;
@@ -692,7 +692,7 @@ int z_impl_k_pipe_get(struct k_pipe *pipe, void *data, size_t bytes_to_read,
 	pipe_desc.buffer        = (u8_t *)data + num_bytes_read;
 	pipe_desc.bytes_to_xfer = bytes_to_read - num_bytes_read;
 
-	if (timeout != K_NO_WAIT) {
+	if (!K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		_current->base.swap_data = &pipe_desc;
 		k_spinlock_key_t key = k_spin_lock(&pipe->lock);
 
@@ -728,7 +728,7 @@ Z_SYSCALL_HANDLER(k_pipe_get,
 #endif
 
 int z_impl_k_pipe_put(struct k_pipe *pipe, void *data, size_t bytes_to_write,
-		     size_t *bytes_written, size_t min_xfer, s32_t timeout)
+		     size_t *bytes_written, size_t min_xfer, k_timeout_t timeout)
 {
 	__ASSERT(min_xfer <= bytes_to_write, "");
 	__ASSERT(bytes_written != NULL, "");

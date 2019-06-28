@@ -48,12 +48,11 @@ void z_timer_expiration_handler(struct _timeout *t)
 	struct k_thread *thread;
 
 	/*
-	 * if the timer is periodic, start it again; don't add _TICK_ALIGN
-	 * since we're already aligned to a tick boundary
+	 * if the timer is periodic, start it again
 	 */
-	if (timer->period > 0) {
+	if (!K_TIMEOUT_EQ(timer->period, K_FOREVER)) {
 		z_add_timeout(&timer->timeout, z_timer_expiration_handler,
-			     timer->period);
+			      timer->period);
 	}
 
 	/* update timer's status */
@@ -104,21 +103,26 @@ void k_timer_init(struct k_timer *timer,
 }
 
 
-void z_impl_k_timer_start(struct k_timer *timer, s32_t duration, s32_t period)
+void z_impl_k_timer_start(struct k_timer *timer, k_timeout_t duration,
+			  k_timeout_t period)
 {
-	__ASSERT(duration >= 0 && period >= 0 &&
-		 (duration != 0 || period != 0), "invalid parameters\n");
+	if (K_TIMEOUT_EQ(period, K_NO_WAIT)) {
+		/* The API has always treated a period of zero as
+		 * "aperiodic/one-shot", which is sort of a weird
+		 * choice but preserved here for compatibility.
+		 */
+		period = K_FOREVER;
+	}
 
-	volatile s32_t period_in_ticks, duration_in_ticks;
-
-	period_in_ticks = z_ms_to_ticks(period);
-	duration_in_ticks = z_ms_to_ticks(duration);
+	__ASSERT(K_TIMEOUT_GET(duration) >= 0 && K_TIMEOUT_GET(period) >= 0 &&
+		 (K_TIMEOUT_GET(duration) != 0
+		  || K_TIMEOUT_GET(period) != 0), "invalid parameters\n");
 
 	(void)z_abort_timeout(&timer->timeout);
-	timer->period = period_in_ticks;
+	timer->period = period;
 	timer->status = 0U;
 	z_add_timeout(&timer->timeout, z_timer_expiration_handler,
-		     duration_in_ticks);
+		      duration);
 }
 
 #ifdef CONFIG_USERSPACE
@@ -126,8 +130,8 @@ Z_SYSCALL_HANDLER(k_timer_start, timer, duration_p, period_p)
 {
 	s32_t duration, period;
 
-	duration = (s32_t)duration_p;
-	period = (s32_t)period_p;
+	duration = K_TIMEOUT_GET((k_timeout_t)duration_p);
+	period = K_TIMEOUT_GET((k_timeout_t)period_p);
 
 	Z_OOPS(Z_SYSCALL_VERIFY(duration >= 0 && period >= 0 &&
 				(duration != 0 || period != 0)));

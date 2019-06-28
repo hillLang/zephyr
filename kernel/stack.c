@@ -131,7 +131,8 @@ Z_SYSCALL_HANDLER(k_stack_push, stack_p, data)
 }
 #endif
 
-int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, s32_t timeout)
+int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data,
+		       k_timeout_t timeout)
 {
 	k_spinlock_key_t key;
 	int result;
@@ -145,7 +146,7 @@ int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, s32_t timeout)
 		return 0;
 	}
 
-	if (timeout == K_NO_WAIT) {
+	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		k_spin_unlock(&stack->lock, key);
 		return -EBUSY;
 	}
