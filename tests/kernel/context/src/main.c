@@ -577,7 +577,7 @@ static void k_yield_entry(void *arg0, void *arg1, void *arg2)
 
 	k_thread_create(&thread_data2, thread_stack2, THREAD_STACKSIZE,
 			thread_helper, NULL, NULL, NULL,
-			K_PRIO_COOP(THREAD_PRIORITY - 1), 0, 0);
+			K_PRIO_COOP(THREAD_PRIORITY - 1), 0, K_NO_WAIT);
 
 	zassert_equal(thread_evidence, 0,
 		      "Helper created at higher priority ran prematurely.");
@@ -738,9 +738,9 @@ static void test_busy_wait(void)
 	k_thread_create(&timeout_threads[0], timeout_stacks[0],
 			THREAD_STACKSIZE2, busy_wait_thread,
 			INT_TO_POINTER(timeout), NULL,
-			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, 0);
+			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, K_NO_WAIT);
 
-	rv = k_sem_take(&reply_timeout, timeout * 2);
+	rv = k_sem_take(&reply_timeout, K_TIMEOUT_MS(timeout * 2));
 
 	zassert_false(rv, " *** thread timed out waiting for " "k_busy_wait()");
 }
@@ -765,9 +765,9 @@ static void test_k_sleep(void)
 	k_thread_create(&timeout_threads[0], timeout_stacks[0],
 			THREAD_STACKSIZE2, thread_sleep,
 			INT_TO_POINTER(timeout), NULL,
-			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, 0);
+			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, K_NO_WAIT);
 
-	rv = k_sem_take(&reply_timeout, timeout * 2);
+	rv = k_sem_take(&reply_timeout, K_TIMEOUT_MS(timeout * 2));
 	zassert_equal(rv, 0, " *** thread timed out waiting for thread on "
 		      "k_sleep().");
 
@@ -779,10 +779,11 @@ static void test_k_sleep(void)
 				THREAD_STACKSIZE2,
 				delayed_thread,
 				INT_TO_POINTER(i), NULL, NULL,
-				K_PRIO_COOP(5), 0, timeouts[i].timeout);
+				K_PRIO_COOP(5), 0,
+				K_TIMEOUT_MS(timeouts[i].timeout));
 	}
 	for (i = 0; i < NUM_TIMEOUT_THREADS; i++) {
-		data = k_fifo_get(&timeout_order_fifo, 750);
+		data = k_fifo_get(&timeout_order_fifo, K_TIMEOUT_MS(750));
 		zassert_not_null(data, " *** timeout while waiting for"
 				 " delayed thread");
 
@@ -795,7 +796,7 @@ static void test_k_sleep(void)
 	}
 
 	/* ensure no more thread fire */
-	data = k_fifo_get(&timeout_order_fifo, 750);
+	data = k_fifo_get(&timeout_order_fifo, K_TIMEOUT_MS(750));
 
 	zassert_false(data, " *** got something unexpected in the fifo");
 
@@ -814,7 +815,8 @@ static void test_k_sleep(void)
 		id = k_thread_create(&timeout_threads[i], timeout_stacks[i],
 				     THREAD_STACKSIZE2, delayed_thread,
 				     INT_TO_POINTER(i), NULL, NULL,
-				     K_PRIO_COOP(5), 0, timeouts[i].timeout);
+				     K_PRIO_COOP(5), 0,
+				     K_TIMEOUT_MS(timeouts[i].timeout));
 
 		delayed_threads[i] = id;
 	}
@@ -840,7 +842,7 @@ static void test_k_sleep(void)
 			}
 		}
 
-		data = k_fifo_get(&timeout_order_fifo, 2750);
+		data = k_fifo_get(&timeout_order_fifo, K_TIMEOUT_MS(2750));
 
 		zassert_not_null(data, " *** timeout while waiting for"
 				 " delayed thread");
@@ -859,7 +861,7 @@ static void test_k_sleep(void)
 		      "got %d\n", num_cancellations, next_cancellation);
 
 	/* ensure no more thread fire */
-	data = k_fifo_get(&timeout_order_fifo, 750);
+	data = k_fifo_get(&timeout_order_fifo, K_TIMEOUT_MS(750));
 	zassert_false(data, " *** got something unexpected in the fifo");
 
 }
@@ -886,7 +888,7 @@ void test_k_yield(void)
 
 	k_thread_create(&thread_data1, thread_stack1, THREAD_STACKSIZE,
 			k_yield_entry, NULL, NULL,
-			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, 0);
+			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, K_NO_WAIT);
 
 	zassert_equal(thread_evidence, 1,
 		      "Thread did not execute as expected!: %d", thread_evidence);
@@ -908,7 +910,7 @@ void test_kernel_thread(void)
 
 	k_thread_create(&thread_data3, thread_stack3, THREAD_STACKSIZE,
 			kernel_thread_entry, NULL, NULL,
-			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, 0);
+			NULL, K_PRIO_COOP(THREAD_PRIORITY), 0, K_NO_WAIT);
 
 }
 
