@@ -832,8 +832,12 @@ int z_impl_k_thread_priority_get(k_tid_t thread)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER1_SIMPLE(k_thread_priority_get, K_OBJ_THREAD,
-			  struct k_thread *);
+static inline int z_vrfy_k_thread_priority_get(k_tid_t thread)
+{
+	Z_OOPS(Z_SYSCALL_OBJ(thread, K_OBJ_THREAD));
+	return z_impl_k_thread_priority_get(thread);
+}
+#include <syscalls/k_thread_priority_get_mrsh.c>
 #endif
 
 void z_impl_k_thread_priority_set(k_tid_t tid, int prio)
@@ -851,20 +855,18 @@ void z_impl_k_thread_priority_set(k_tid_t tid, int prio)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER(k_thread_priority_set, thread_p, prio)
+static inline void z_vrfy_k_thread_priority_set(k_tid_t thread, int prio)
 {
-	struct k_thread *thread = (struct k_thread *)thread_p;
-
 	Z_OOPS(Z_SYSCALL_OBJ(thread, K_OBJ_THREAD));
 	Z_OOPS(Z_SYSCALL_VERIFY_MSG(_is_valid_prio(prio, NULL),
-				    "invalid thread priority %d", (int)prio));
+				    "invalid thread priority %d", prio));
 	Z_OOPS(Z_SYSCALL_VERIFY_MSG((s8_t)prio >= thread->base.prio,
 				    "thread priority may only be downgraded (%d < %d)",
 				    prio, thread->base.prio));
 
-	z_impl_k_thread_priority_set((k_tid_t)thread, prio);
-	return 0;
+	z_impl_k_thread_priority_set(thread, prio);
 }
+#include <syscalls/k_thread_priority_set_mrsh.c>
 #endif
 
 #ifdef CONFIG_SCHED_DEADLINE
@@ -917,7 +919,11 @@ void z_impl_k_yield(void)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER0_SIMPLE_VOID(k_yield);
+static inline void z_vrfy_k_yield(void)
+{
+	z_impl_k_yield();
+}
+#include <syscalls/k_yield_mrsh.c>
 #endif
 
 static s32_t z_tick_sleep(s32_t ticks)
@@ -975,10 +981,11 @@ s32_t z_impl_k_sleep(int ms)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER(k_sleep, ms)
+static inline s32_t z_vrfy_k_sleep(int ms)
 {
 	return z_impl_k_sleep(ms);
 }
+#include <syscalls/k_sleep_mrsh.c>
 #endif
 
 s32_t z_impl_k_usleep(int us)
@@ -991,10 +998,11 @@ s32_t z_impl_k_usleep(int us)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER(k_usleep, us)
+static inline s32_t z_vrfy_k_usleep(int us)
 {
 	return z_impl_k_usleep(us);
 }
+#include <syscalls/k_usleep_mrsh.c>
 #endif
 
 void z_impl_k_wakeup(k_tid_t thread)
@@ -1069,7 +1077,12 @@ void z_sched_abort(struct k_thread *thread)
 #endif
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER1_SIMPLE_VOID(k_wakeup, K_OBJ_THREAD, k_tid_t);
+static inline void z_vrfy_k_wakeup(k_tid_t thread)
+{
+	Z_OOPS(Z_SYSCALL_OBJ(thread, K_OBJ_THREAD));
+	z_impl_k_wakeup(thread);
+}
+#include <syscalls/k_wakeup_mrsh.c>
 #endif
 
 k_tid_t z_impl_k_current_get(void)
@@ -1078,7 +1091,11 @@ k_tid_t z_impl_k_current_get(void)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER0_SIMPLE(k_current_get);
+static inline k_tid_t z_vrfy_k_current_get(void)
+{
+	return z_impl_k_current_get();
+}
+#include <syscalls/k_current_get_mrsh.c>
 #endif
 
 int z_impl_k_is_preempt_thread(void)
@@ -1087,7 +1104,11 @@ int z_impl_k_is_preempt_thread(void)
 }
 
 #ifdef CONFIG_USERSPACE
-Z_SYSCALL_HANDLER0_SIMPLE(k_is_preempt_thread);
+static inline int z_vrfy_k_is_preempt_thread(void)
+{
+	return z_impl_k_is_preempt_thread();
+}
+#include <syscalls/k_is_preempt_thread_mrsh.c>
 #endif
 
 #ifdef CONFIG_SCHED_CPU_MASK
