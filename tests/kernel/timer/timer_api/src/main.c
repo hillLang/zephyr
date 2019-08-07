@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stdlib.h>
 #include <ztest.h>
 #include <zephyr/types.h>
 
@@ -529,7 +530,16 @@ void test_timer_remaining_get(void)
 	u32_t remaining;
 
 	init_timer_data();
+
+	u64_t start = k_uptime_ticks();
+
 	k_timer_start(&remain_timer, K_TIMEOUT_MS(DURATION), K_NO_WAIT);
+
+	s32_t end = k_timer_end_ticks(&remain_timer);
+
+	zassert_true(abs(end - start - k_ms_to_ticks_ceil32(DURATION)) <= 2,
+		     "k_timer end time incorrect");
+
 	busy_wait_ms(DURATION / 2);
 	remaining = k_timer_remaining_get(&remain_timer);
 	k_timer_stop(&remain_timer);
