@@ -137,17 +137,17 @@ static inline u32_t z_arch_syscall_invoke6(u32_t arg1, u32_t arg2, u32_t arg3,
  */
 static ALWAYS_INLINE bool z_syscall_trap(void)
 {
-        bool ret = false;
+	bool ret = false;
 #ifdef CONFIG_USERSPACE
 #if defined(__ZEPHYR_SUPERVISOR__)
-        ret = false;
+	ret = false;
 #elif defined(__ZEPHYR_USER__)
-        ret = true;
+	ret = true;
 #else
-        ret = z_arch_is_user_context();
+	ret = z_arch_is_user_context();
 #endif
 #endif
-        return ret;
+	return ret;
 }
 
 #ifdef __cplusplus
