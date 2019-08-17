@@ -249,7 +249,7 @@ static int slice_max_prio;
 static struct k_thread *pending_current;
 #endif
 
-static void reset_time_slice(void)
+void z_reset_time_slice(void)
 {
 	/* Add the elapsed time since the last announced tick to the
 	 * slice count, as we'll see those "expired" ticks arrive in a
@@ -267,7 +267,7 @@ void k_sched_time_slice_set(s32_t slice, int prio)
 		_current_cpu->slice_ticks = 0;
 		slice_time = z_ms_to_ticks(slice);
 		slice_max_prio = prio;
-		reset_time_slice();
+		z_reset_time_slice();
 	}
 }
 
@@ -284,7 +284,7 @@ void z_time_slice(int ticks)
 {
 #ifdef CONFIG_SWAP_NONATOMIC
 	if (pending_current == _current) {
-		reset_time_slice();
+		z_reset_time_slice();
 		return;
 	}
 	pending_current = NULL;
@@ -293,7 +293,7 @@ void z_time_slice(int ticks)
 	if (slice_time && sliceable(_current)) {
 		if (ticks >= _current_cpu->slice_ticks) {
 			z_move_thread_to_end_of_prio_q(_current);
-			reset_time_slice();
+			z_reset_time_slice();
 		} else {
 			_current_cpu->slice_ticks -= ticks;
 		}
@@ -301,8 +301,6 @@ void z_time_slice(int ticks)
 		_current_cpu->slice_ticks = 0;
 	}
 }
-#else
-static void reset_time_slice(void) { /* !CONFIG_TIMESLICING */ }
 #endif
 
 static void update_cache(int preempt_ok)
@@ -312,7 +310,7 @@ static void update_cache(int preempt_ok)
 
 	if (should_preempt(th, preempt_ok)) {
 		if (th != _current) {
-			reset_time_slice();
+			z_reset_time_slice();
 		}
 		_kernel.ready_q.cache = th;
 	} else {
@@ -342,7 +340,9 @@ void z_add_thread_to_ready_q(struct k_thread *thread)
 void z_move_thread_to_end_of_prio_q(struct k_thread *thread)
 {
 	LOCKED(&sched_spinlock) {
-		_priq_run_remove(&_kernel.ready_q.runq, thread);
+		if (z_is_thread_queued(thread)) {
+			_priq_run_remove(&_kernel.ready_q.runq, thread);
+		}
 		_priq_run_add(&_kernel.ready_q.runq, thread);
 		z_mark_thread_as_queued(thread);
 		update_cache(thread == _current);
@@ -599,7 +599,9 @@ void *z_get_next_switch_handle(void *interrupted)
 		struct k_thread *th = next_up();
 
 		if (_current != th) {
-			reset_time_slice();
+#ifdef CONFIG_TIMESLICING
+			z_reset_time_slice();
+#endif
 			_current_cpu->swap_ok = 0;
 			set_current(th);
 #ifdef SPIN_VALIDATE
