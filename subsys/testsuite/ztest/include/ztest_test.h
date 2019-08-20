@@ -126,6 +126,30 @@ static inline void unit_test_noop(void)
 #define ztest_user_unit_test(fn) \
 	ztest_user_unit_test_setup_teardown(fn, unit_test_noop, unit_test_noop)
 
+extern void z_test_1cpu_start(void);
+extern void z_test_1cpu_stop(void);
+
+/**
+ * @brief Define a SMP-unsafe test function
+ *
+ * As ztest_unit_test(), but ensures all test code runs on only
+ * one CPU when in SMP.
+ *
+ * @param fn Test function
+ */
+#define ztest_1cpu_unit_test(fn)					\
+	ztest_unit_test_setup_teardown(fn, z_test_1cpu_start, z_test_1cpu_stop)
+
+/**
+ * @brief Define a SMP-unsafe test function that should run as a user thread
+ *
+ * As ztest_user_unit_test(), but ensures all test code runs on only
+ * one CPU when in SMP.
+ *
+ * @param fn Test function
+ */
+#define ztest_1cpu_user_unit_test(fn) \
+	ztest_user_unit_test_setup_teardown(fn, z_test_1cpu_start, z_test_1cpu_stop)
 
 /* definitions for use with testing application shared memory   */
 #ifdef CONFIG_USERSPACE
