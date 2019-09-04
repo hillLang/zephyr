@@ -595,7 +595,7 @@ void __printf_like(2, 3) log_from_user(struct log_msg_ids src_level,
 
 
 /* Internal function used by log_from_user(). */
-__syscall void z_log_string_from_user(u32_t src_level_val, const char *str);
+__syscall() void z_log_string_from_user(u32_t src_level_val, const char *str);
 
 /** @brief Log binary data (displayed as hexdump) from user mode conext.
  *
@@ -611,7 +611,7 @@ void log_hexdump_from_user(struct log_msg_ids src_level, const char *metadata,
 			   const u8_t *data, u32_t len);
 
 /* Internal function used by log_hexdump_from_user(). */
-__syscall void z_log_hexdump_from_user(u32_t src_level_val,
+__syscall() void z_log_hexdump_from_user(u32_t src_level_val,
 				       const char *metadata,
 				       const u8_t *data, u32_t len);
 

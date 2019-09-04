@@ -202,7 +202,7 @@ struct i2c_slave_driver_api {
  * @retval 0 If successful.
  * @retval -EIO General input / output error, failed to configure device.
  */
-__syscall int i2c_configure(struct device *dev, u32_t dev_config);
+__syscall() int i2c_configure(struct device *dev, u32_t dev_config);
 
 static inline int z_impl_i2c_configure(struct device *dev, u32_t dev_config)
 {
@@ -238,7 +238,7 @@ static inline int z_impl_i2c_configure(struct device *dev, u32_t dev_config)
  * @retval 0 If successful.
  * @retval -EIO General input / output error.
  */
-__syscall int i2c_transfer(struct device *dev,
+__syscall() int i2c_transfer(struct device *dev,
 			   struct i2c_msg *msgs, u8_t num_msgs,
 			   u16_t addr);
 
@@ -275,7 +275,7 @@ static inline int z_impl_i2c_transfer(struct device *dev,
  * @retval -EIO General input / output error.
  * @retval -ENOTSUP If slave mode is not supported
  */
-__syscall int i2c_slave_register(struct device *dev,
+__syscall() int i2c_slave_register(struct device *dev,
 				 struct i2c_slave_config *cfg);
 
 static inline int z_impl_i2c_slave_register(struct device *dev,
@@ -306,7 +306,7 @@ static inline int z_impl_i2c_slave_register(struct device *dev,
  * @retval -EINVAL If parameters are invalid
  * @retval -ENOTSUP If slave mode is not supported
  */
-__syscall int i2c_slave_unregister(struct device *dev,
+__syscall() int i2c_slave_unregister(struct device *dev,
 				   struct i2c_slave_config *cfg);
 
 static inline int z_impl_i2c_slave_unregister(struct device *dev,
@@ -334,7 +334,7 @@ static inline int z_impl_i2c_slave_unregister(struct device *dev,
  * @retval -EINVAL If parameters are invalid
  * @retval -EIO General input / output error.
  */
-__syscall int i2c_slave_driver_register(struct device *dev);
+__syscall() int i2c_slave_driver_register(struct device *dev);
 
 static inline int z_impl_i2c_slave_driver_register(struct device *dev)
 {
@@ -356,7 +356,7 @@ static inline int z_impl_i2c_slave_driver_register(struct device *dev)
  * @retval 0 Is successful
  * @retval -EINVAL If parameters are invalid
  */
-__syscall int i2c_slave_driver_unregister(struct device *dev);
+__syscall() int i2c_slave_driver_unregister(struct device *dev);
 
 static inline int z_impl_i2c_slave_driver_unregister(struct device *dev)
 {

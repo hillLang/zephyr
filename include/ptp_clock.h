@@ -52,7 +52,7 @@ static inline int ptp_clock_set(struct device *dev, struct net_ptp_time *tm)
  *
  * @return 0 if ok, <0 if error
  */
-__syscall int ptp_clock_get(struct device *dev, struct net_ptp_time *tm);
+__syscall() int ptp_clock_get(struct device *dev, struct net_ptp_time *tm);
 
 static inline int z_impl_ptp_clock_get(struct device *dev,
 				       struct net_ptp_time *tm)

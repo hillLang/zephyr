@@ -346,7 +346,7 @@ struct i2s_driver_api {
  * @retval 0 If successful.
  * @retval -EINVAL Invalid argument.
  */
-__syscall int i2s_configure(struct device *dev, enum i2s_dir dir,
+__syscall() int i2s_configure(struct device *dev, enum i2s_dir dir,
 			    struct i2s_config *cfg);
 
 static inline int z_impl_i2s_configure(struct device *dev, enum i2s_dir dir,
@@ -436,7 +436,7 @@ static inline int i2s_read(struct device *dev, void **mem_block,
  * @retval -EBUSY Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
  */
-__syscall int i2s_buf_read(struct device *dev, void *buf, size_t *size);
+__syscall() int i2s_buf_read(struct device *dev, void *buf, size_t *size);
 
 /**
  * @brief Write data to the TX queue.
@@ -490,7 +490,7 @@ static inline int i2s_write(struct device *dev, void *mem_block, size_t size)
  * @retval -ENOMEM No memory in TX slab queue.
  * @retval -EINVAL Size parameter larger than TX queue memory block.
  */
-__syscall int i2s_buf_write(struct device *dev, void *buf, size_t size);
+__syscall() int i2s_buf_write(struct device *dev, void *buf, size_t size);
 
 /**
  * @brief Send a trigger command.
@@ -505,7 +505,7 @@ __syscall int i2s_buf_write(struct device *dev, void *buf, size_t size);
  *         channel cannot be allocated.
  * @retval -ENOMEM RX/TX memory block not available.
  */
-__syscall int i2s_trigger(struct device *dev, enum i2s_dir dir,
+__syscall() int i2s_trigger(struct device *dev, enum i2s_dir dir,
 			  enum i2s_trigger_cmd cmd);
 
 static inline int z_impl_i2s_trigger(struct device *dev, enum i2s_dir dir,

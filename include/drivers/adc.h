@@ -317,7 +317,7 @@ struct adc_driver_api {
  * @retval 0       On success.
  * @retval -EINVAL If a parameter with an invalid value has been provided.
  */
-__syscall int adc_channel_setup(struct device *dev,
+__syscall() int adc_channel_setup(struct device *dev,
 				const struct adc_channel_cfg *channel_cfg);
 
 static inline int z_impl_adc_channel_setup(struct device *dev,
@@ -350,7 +350,7 @@ static inline int z_impl_adc_channel_setup(struct device *dev,
  *                  in the buffer, but at least some of them were taken with
  *                  an extra delay compared to what was scheduled.
  */
-__syscall int adc_read(struct device *dev,
+__syscall() int adc_read(struct device *dev,
 		       const struct adc_sequence *sequence);
 
 static inline int z_impl_adc_read(struct device *dev,
@@ -379,7 +379,7 @@ static inline int z_impl_adc_read(struct device *dev,
  * @returns 0 on success, negative error code otherwise.
  *
  */
-__syscall int adc_read_async(struct device *dev,
+__syscall() int adc_read_async(struct device *dev,
 			     const struct adc_sequence *sequence,
 			     struct k_poll_signal *async);
 

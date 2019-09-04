@@ -872,7 +872,7 @@ struct net_if_addr *net_if_ipv6_addr_lookup_by_iface(struct net_if *iface,
  * @return >0 if address was found in given network interface index,
  * all other values mean address was not found
  */
-__syscall int net_if_ipv6_addr_lookup_by_index(const struct in6_addr *addr);
+__syscall() int net_if_ipv6_addr_lookup_by_index(const struct in6_addr *addr);
 
 /**
  * @brief Add a IPv6 address to an interface
@@ -899,7 +899,7 @@ struct net_if_addr *net_if_ipv6_addr_add(struct net_if *iface,
  *
  * @return True if ok, false if address could not be added
  */
-__syscall bool net_if_ipv6_addr_add_by_index(int index,
+__syscall() bool net_if_ipv6_addr_add_by_index(int index,
 					     struct in6_addr *addr,
 					     enum net_addr_type addr_type,
 					     u32_t vlifetime);
@@ -931,7 +931,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr);
  *
  * @return True if successfully removed, false otherwise
  */
-__syscall bool net_if_ipv6_addr_rm_by_index(int index,
+__syscall() bool net_if_ipv6_addr_rm_by_index(int index,
 					    const struct in6_addr *addr);
 
 /**
@@ -1532,7 +1532,7 @@ bool net_if_ipv4_addr_rm(struct net_if *iface, const struct in_addr *addr);
  * @return >0 if address was found in given network interface index,
  * all other values mean address was not found
  */
-__syscall int net_if_ipv4_addr_lookup_by_index(const struct in_addr *addr);
+__syscall() int net_if_ipv4_addr_lookup_by_index(const struct in_addr *addr);
 
 /**
  * @brief Add a IPv4 address to an interface by network interface index
@@ -1544,7 +1544,7 @@ __syscall int net_if_ipv4_addr_lookup_by_index(const struct in_addr *addr);
  *
  * @return True if ok, false if the address could not be added
  */
-__syscall bool net_if_ipv4_addr_add_by_index(int index,
+__syscall() bool net_if_ipv4_addr_add_by_index(int index,
 					     struct in_addr *addr,
 					     enum net_addr_type addr_type,
 					     u32_t vlifetime);
@@ -1557,7 +1557,7 @@ __syscall bool net_if_ipv4_addr_add_by_index(int index,
  *
  * @return True if successfully removed, false otherwise
  */
-__syscall bool net_if_ipv4_addr_rm_by_index(int index,
+__syscall() bool net_if_ipv4_addr_rm_by_index(int index,
 					    const struct in_addr *addr);
 
 /**
@@ -1751,7 +1751,7 @@ void net_if_ipv4_set_netmask(struct net_if *iface,
  *
  * @return True if netmask was added, false otherwise.
  */
-__syscall bool net_if_ipv4_set_netmask_by_index(int index,
+__syscall() bool net_if_ipv4_set_netmask_by_index(int index,
 						const struct in_addr *netmask);
 
 /**
@@ -1770,7 +1770,7 @@ void net_if_ipv4_set_gw(struct net_if *iface, const struct in_addr *gw);
  *
  * @return True if gateway was added, false otherwise.
  */
-__syscall bool net_if_ipv4_set_gw_by_index(int index, const struct in_addr *gw);
+__syscall() bool net_if_ipv4_set_gw_by_index(int index, const struct in_addr *gw);
 
 /**
  * @brief Get a network interface that should be used when sending

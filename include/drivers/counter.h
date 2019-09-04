@@ -304,7 +304,7 @@ static inline u32_t counter_get_max_top_value(const struct device *dev)
  * @retval 0 If successful.
  * @retval Negative errno code if failure.
  */
-__syscall int counter_start(struct device *dev);
+__syscall() int counter_start(struct device *dev);
 
 static inline int z_impl_counter_start(struct device *dev)
 {
@@ -323,7 +323,7 @@ static inline int z_impl_counter_start(struct device *dev)
  * @retval -ENOTSUP if the device doesn't support stopping the
  *                        counter.
  */
-__syscall int counter_stop(struct device *dev);
+__syscall() int counter_stop(struct device *dev);
 
 static inline int z_impl_counter_stop(struct device *dev)
 {
@@ -339,7 +339,7 @@ static inline int z_impl_counter_stop(struct device *dev)
  *
  * @return  32-bit value
  */
-__syscall u32_t counter_read(struct device *dev);
+__syscall() u32_t counter_read(struct device *dev);
 
 static inline u32_t z_impl_counter_read(struct device *dev)
 {
@@ -456,7 +456,7 @@ static inline int counter_set_top_value(struct device *dev,
  * @retval 1 if any counter interrupt is pending.
  * @retval 0 if no counter interrupt is pending.
  */
-__syscall int counter_get_pending_int(struct device *dev);
+__syscall() int counter_get_pending_int(struct device *dev);
 
 static inline int z_impl_counter_get_pending_int(struct device *dev)
 {
@@ -473,7 +473,7 @@ static inline int z_impl_counter_get_pending_int(struct device *dev)
  *
  * @return Top value.
  */
-__syscall u32_t counter_get_top_value(struct device *dev);
+__syscall() u32_t counter_get_top_value(struct device *dev);
 
 static inline u32_t z_impl_counter_get_top_value(struct device *dev)
 {
@@ -491,7 +491,7 @@ static inline u32_t z_impl_counter_get_top_value(struct device *dev)
  *
  * @return Max alarm value.
  */
-__deprecated __syscall u32_t counter_get_max_relative_alarm(struct device *dev);
+__deprecated __syscall() u32_t counter_get_max_relative_alarm(struct device *dev);
 
 static inline u32_t z_impl_counter_get_max_relative_alarm(struct device *dev)
 {
@@ -529,7 +529,7 @@ static inline u32_t z_impl_counter_get_max_relative_alarm(struct device *dev)
  * @retval -ENOTSUP if function or flags are not supported.
  * @retval -EINVAL if ticks value is invalid.
  */
-__syscall int counter_set_guard_period(struct device *dev, u32_t ticks,
+__syscall() int counter_set_guard_period(struct device *dev, u32_t ticks,
 					u32_t flags);
 
 static inline int z_impl_counter_set_guard_period(struct device *dev,
@@ -556,7 +556,7 @@ static inline int z_impl_counter_set_guard_period(struct device *dev,
  * @return Guard period given in counter ticks or 0 if function or flags are
  *	   not supported.
  */
-__syscall u32_t counter_get_guard_period(struct device *dev, u32_t flags);
+__syscall() u32_t counter_get_guard_period(struct device *dev, u32_t flags);
 
 static inline u32_t z_impl_counter_get_guard_period(struct device *dev,
 							u32_t flags)

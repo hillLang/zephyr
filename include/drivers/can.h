@@ -295,7 +295,7 @@ struct can_driver_api {
  * @retval 0 If successful.
  * @retval CAN_TX_* on failure.
  */
-__syscall int can_send(struct device *dev, const struct zcan_frame *msg,
+__syscall() int can_send(struct device *dev, const struct zcan_frame *msg,
 		       s32_t timeout, can_tx_callback_t callback_isr,
 		       void *callback_arg);
 
@@ -401,7 +401,7 @@ int can_attach_workq(struct device *dev, struct k_work_q  *work_q,
  * @retval filter id on success.
  * @retval CAN_NO_FREE_FILTER if there is no filter left.
  */
-__syscall int can_attach_msgq(struct device *dev, struct k_msgq *msg_q,
+__syscall() int can_attach_msgq(struct device *dev, struct k_msgq *msg_q,
 			      const struct zcan_filter *filter);
 
 /**
@@ -445,7 +445,7 @@ static inline int can_attach_isr(struct device *dev,
  *
  * @retval none
  */
-__syscall void can_detach(struct device *dev, int filter_id);
+__syscall() void can_detach(struct device *dev, int filter_id);
 
 static inline void z_impl_can_detach(struct device *dev, int filter_id)
 {
@@ -465,7 +465,7 @@ static inline void z_impl_can_detach(struct device *dev, int filter_id)
  * @retval 0 If successful.
  * @retval -EIO General input / output error, failed to configure device.
  */
-__syscall int can_configure(struct device *dev, enum can_mode mode,
+__syscall() int can_configure(struct device *dev, enum can_mode mode,
 			    u32_t bitrate);
 
 static inline int z_impl_can_configure(struct device *dev, enum can_mode mode,

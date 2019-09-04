@@ -148,7 +148,7 @@ struct zsock_addrinfo {
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_socket(int family, int type, int proto);
+__syscall() int zsock_socket(int family, int type, int proto);
 
 /**
  * @brief Close a network socket
@@ -161,7 +161,7 @@ __syscall int zsock_socket(int family, int type, int proto);
  * may conflict with generic POSIX ``close()`` function).
  * @endrst
  */
-__syscall int zsock_close(int sock);
+__syscall() int zsock_close(int sock);
 
 /**
  * @brief Shutdown socket send/receive operations
@@ -176,7 +176,7 @@ __syscall int zsock_close(int sock);
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_shutdown(int sock, int how);
+__syscall() int zsock_shutdown(int sock, int how);
 
 /**
  * @brief Bind a socket to a local network address
@@ -190,7 +190,7 @@ __syscall int zsock_shutdown(int sock, int how);
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_bind(int sock, const struct sockaddr *addr,
+__syscall() int zsock_bind(int sock, const struct sockaddr *addr,
 			 socklen_t addrlen);
 
 /**
@@ -205,7 +205,7 @@ __syscall int zsock_bind(int sock, const struct sockaddr *addr,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_connect(int sock, const struct sockaddr *addr,
+__syscall() int zsock_connect(int sock, const struct sockaddr *addr,
 			    socklen_t addrlen);
 
 /**
@@ -220,7 +220,7 @@ __syscall int zsock_connect(int sock, const struct sockaddr *addr,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_listen(int sock, int backlog);
+__syscall() int zsock_listen(int sock, int backlog);
 
 /**
  * @brief Accept a connection on listening socket
@@ -234,7 +234,7 @@ __syscall int zsock_listen(int sock, int backlog);
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_accept(int sock, struct sockaddr *addr, socklen_t *addrlen);
+__syscall() int zsock_accept(int sock, struct sockaddr *addr, socklen_t *addrlen);
 
 /**
  * @brief Send data to an arbitrary network address
@@ -248,7 +248,7 @@ __syscall int zsock_accept(int sock, struct sockaddr *addr, socklen_t *addrlen);
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall ssize_t zsock_sendto(int sock, const void *buf, size_t len,
+__syscall() ssize_t zsock_sendto(int sock, const void *buf, size_t len,
 			       int flags, const struct sockaddr *dest_addr,
 			       socklen_t addrlen);
 
@@ -282,7 +282,7 @@ static inline ssize_t zsock_send(int sock, const void *buf, size_t len,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall ssize_t zsock_sendmsg(int sock, const struct msghdr *msg,
+__syscall() ssize_t zsock_sendmsg(int sock, const struct msghdr *msg,
 				int flags);
 
 /**
@@ -297,7 +297,7 @@ __syscall ssize_t zsock_sendmsg(int sock, const struct msghdr *msg,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall ssize_t zsock_recvfrom(int sock, void *buf, size_t max_len,
+__syscall() ssize_t zsock_recvfrom(int sock, void *buf, size_t max_len,
 				 int flags, struct sockaddr *src_addr,
 				 socklen_t *addrlen);
 
@@ -331,7 +331,7 @@ static inline ssize_t zsock_recv(int sock, void *buf, size_t max_len,
  * it may conflict with generic POSIX ``fcntl()`` function).
  * @endrst
  */
-__syscall int zsock_fcntl(int sock, int cmd, int flags);
+__syscall() int zsock_fcntl(int sock, int cmd, int flags);
 
 /**
  * @brief Efficiently poll multiple sockets for events
@@ -347,7 +347,7 @@ __syscall int zsock_fcntl(int sock, int cmd, int flags);
  * it may conflict with generic POSIX ``poll()`` function).
  * @endrst
  */
-__syscall int zsock_poll(struct zsock_pollfd *fds, int nfds, int timeout);
+__syscall() int zsock_poll(struct zsock_pollfd *fds, int nfds, int timeout);
 
 /**
  * @brief Get various socket options
@@ -364,7 +364,7 @@ __syscall int zsock_poll(struct zsock_pollfd *fds, int nfds, int timeout);
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_getsockopt(int sock, int level, int optname,
+__syscall() int zsock_getsockopt(int sock, int level, int optname,
 			       void *optval, socklen_t *optlen);
 
 /**
@@ -382,7 +382,7 @@ __syscall int zsock_getsockopt(int sock, int level, int optname,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_setsockopt(int sock, int level, int optname,
+__syscall() int zsock_setsockopt(int sock, int level, int optname,
 			       const void *optval, socklen_t optlen);
 
 /**
@@ -397,7 +397,7 @@ __syscall int zsock_setsockopt(int sock, int level, int optname,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_getsockname(int sock, struct sockaddr *addr,
+__syscall() int zsock_getsockname(int sock, struct sockaddr *addr,
 				socklen_t *addrlen);
 
 /**
@@ -412,7 +412,7 @@ __syscall int zsock_getsockname(int sock, struct sockaddr *addr,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_gethostname(char *buf, size_t len);
+__syscall() int zsock_gethostname(char *buf, size_t len);
 
 /**
  * @brief Convert network address from internal to numeric ASCII form
@@ -444,10 +444,10 @@ static inline char *zsock_inet_ntop(sa_family_t family, const void *src,
  * if :option:`CONFIG_NET_SOCKETS_POSIX_NAMES` is defined.
  * @endrst
  */
-__syscall int zsock_inet_pton(sa_family_t family, const char *src, void *dst);
+__syscall() int zsock_inet_pton(sa_family_t family, const char *src, void *dst);
 
 /** @cond INTERNAL_HIDDEN */
-__syscall int z_zsock_getaddrinfo_internal(const char *host,
+__syscall() int z_zsock_getaddrinfo_internal(const char *host,
 					   const char *service,
 					   const struct zsock_addrinfo *hints,
 					   struct zsock_addrinfo *res);

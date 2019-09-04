@@ -61,7 +61,7 @@ struct entropy_driver_api {
  * @retval 0 on success.
  * @retval -ERRNO errno code on error.
  */
-__syscall int entropy_get_entropy(struct device *dev,
+__syscall() int entropy_get_entropy(struct device *dev,
 				  u8_t *buffer,
 				  u16_t length);
 

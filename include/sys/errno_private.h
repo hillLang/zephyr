@@ -25,7 +25,7 @@ extern "C" {
  *
  * @return Memory location of errno data for current thread
  */
-__syscall int *z_errno(void);
+__syscall() int *z_errno(void);
 
 #ifdef __cplusplus
 }

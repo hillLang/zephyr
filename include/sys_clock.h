@@ -32,7 +32,7 @@ extern void z_enable_sys_clock(void);
 #endif
 
 #if defined(CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME)
-__syscall int z_clock_hw_cycles_per_sec_runtime_get(void);
+__syscall() int z_clock_hw_cycles_per_sec_runtime_get(void);
 
 static inline int z_impl_z_clock_hw_cycles_per_sec_runtime_get(void)
 {

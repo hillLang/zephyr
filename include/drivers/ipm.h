@@ -128,7 +128,7 @@ struct ipm_driver_api {
  *                  or the device isn't an outbound IPM channel.
  * @retval 0        On success.
  */
-__syscall int ipm_send(struct device *ipmdev, int wait, u32_t id,
+__syscall() int ipm_send(struct device *ipmdev, int wait, u32_t id,
 		       const void *data, int size);
 
 static inline int z_impl_ipm_send(struct device *ipmdev, int wait, u32_t id,
@@ -165,7 +165,7 @@ static inline void ipm_register_callback(struct device *ipmdev,
  *
  * @return Maximum possible size of a message in bytes.
  */
-__syscall int ipm_max_data_size_get(struct device *ipmdev);
+__syscall() int ipm_max_data_size_get(struct device *ipmdev);
 
 static inline int z_impl_ipm_max_data_size_get(struct device *ipmdev)
 {
@@ -185,7 +185,7 @@ static inline int z_impl_ipm_max_data_size_get(struct device *ipmdev)
  *
  * @return Maximum possible value of a message ID.
  */
-__syscall u32_t ipm_max_id_val_get(struct device *ipmdev);
+__syscall() u32_t ipm_max_id_val_get(struct device *ipmdev);
 
 static inline u32_t z_impl_ipm_max_id_val_get(struct device *ipmdev)
 {
@@ -203,7 +203,7 @@ static inline u32_t z_impl_ipm_max_id_val_get(struct device *ipmdev)
  * @retval 0      On success.
  * @retval EINVAL If it isn't an inbound channel.
  */
-__syscall int ipm_set_enabled(struct device *ipmdev, int enable);
+__syscall() int ipm_set_enabled(struct device *ipmdev, int enable);
 
 static inline int z_impl_ipm_set_enabled(struct device *ipmdev, int enable)
 {

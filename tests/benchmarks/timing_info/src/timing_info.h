@@ -212,8 +212,8 @@ extern u64_t __end_tick_time;
 /******************************************************************************/
 #ifdef CONFIG_USERSPACE
 #include <syscall_handler.h>
-__syscall int k_dummy_syscall(void);
-__syscall u32_t userspace_read_timer_value(void);
-__syscall int validation_overhead_syscall(void);
+__syscall() int k_dummy_syscall(void);
+__syscall() u32_t userspace_read_timer_value(void);
+__syscall() int validation_overhead_syscall(void);
 #include <syscalls/timing_info.h>
 #endif	/* CONFIG_USERSPACE */

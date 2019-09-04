@@ -692,7 +692,7 @@ static inline struct device *net_eth_get_ptp_clock(struct net_if *iface)
  * @return Pointer to PTP clock if found, NULL if not found or if this
  * ethernet interface index does not support PTP.
  */
-__syscall struct device *net_eth_get_ptp_clock_by_index(int index);
+__syscall() struct device *net_eth_get_ptp_clock_by_index(int index);
 
 /**
  * @brief Return gPTP port number attached to this interface.

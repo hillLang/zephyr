@@ -335,7 +335,7 @@ struct sensor_driver_api {
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_attr_set(struct device *dev,
+__syscall() int sensor_attr_set(struct device *dev,
 			      enum sensor_channel chan,
 			      enum sensor_attribute attr,
 			      const struct sensor_value *val);
@@ -400,7 +400,7 @@ static inline int sensor_trigger_set(struct device *dev,
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_sample_fetch(struct device *dev);
+__syscall() int sensor_sample_fetch(struct device *dev);
 
 static inline int z_impl_sensor_sample_fetch(struct device *dev)
 {
@@ -428,7 +428,7 @@ static inline int z_impl_sensor_sample_fetch(struct device *dev)
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_sample_fetch_chan(struct device *dev,
+__syscall() int sensor_sample_fetch_chan(struct device *dev,
 				       enum sensor_channel type);
 
 static inline int z_impl_sensor_sample_fetch_chan(struct device *dev,
@@ -460,7 +460,7 @@ static inline int z_impl_sensor_sample_fetch_chan(struct device *dev,
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_channel_get(struct device *dev,
+__syscall() int sensor_channel_get(struct device *dev,
 				 enum sensor_channel chan,
 				 struct sensor_value *val);
 

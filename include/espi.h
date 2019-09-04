@@ -402,7 +402,7 @@ struct espi_driver_api {
  * @retval -EINVAL invalid capabilities, failed to configure device.
  * @retval -ENOTSUP capability not supported by eSPI slave.
  */
-__syscall int espi_config(struct device *dev, struct espi_cfg *cfg);
+__syscall() int espi_config(struct device *dev, struct espi_cfg *cfg);
 
 static inline int z_impl_espi_config(struct device *dev,
 				     struct espi_cfg *cfg)
@@ -425,7 +425,7 @@ static inline int z_impl_espi_config(struct device *dev,
  * @retval true If eSPI channel is ready.
  * @retval false otherwise.
  */
-__syscall bool espi_get_channel_status(struct device *dev,
+__syscall() bool espi_get_channel_status(struct device *dev,
 				       enum espi_channel ch);
 
 static inline bool z_impl_espi_get_channel_status(struct device *dev,
@@ -450,7 +450,7 @@ static inline bool z_impl_espi_get_channel_status(struct device *dev,
  *         low memory transactions are handled by controller hardware directly.
  * @retval -EIO General input / output error, failed to send over the bus.
  */
-__syscall int espi_read_request(struct device *dev,
+__syscall() int espi_read_request(struct device *dev,
 				struct espi_request_packet req);
 
 static inline int z_impl_espi_read_request(struct device *dev,
@@ -479,7 +479,7 @@ static inline int z_impl_espi_read_request(struct device *dev,
  *         low memory transactions are handled by controller hardware directly.
  * @retval -EIO General input / output error, failed to send over the bus.
  */
-__syscall int espi_write_request(struct device *dev,
+__syscall() int espi_write_request(struct device *dev,
 				 struct espi_request_packet req);
 
 static inline int z_impl_espi_write_request(struct device *dev,
@@ -508,7 +508,7 @@ static inline int z_impl_espi_write_request(struct device *dev,
  * @retval 0 If successful.
  * @retval -EIO General input / output error, failed to send over the bus.
  */
-__syscall int espi_send_vwire(struct device *dev,
+__syscall() int espi_send_vwire(struct device *dev,
 			      enum espi_vwire_signal signal,
 			      u8_t level);
 
@@ -534,7 +534,7 @@ static inline int z_impl_espi_send_vwire(struct device *dev,
  *
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_receive_vwire(struct device *dev,
+__syscall() int espi_receive_vwire(struct device *dev,
 				 enum espi_vwire_signal signal,
 				 u8_t *level);
 
@@ -559,7 +559,7 @@ static inline int z_impl_espi_receive_vwire(struct device *dev,
  *
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_send_oob(struct device *dev, struct espi_oob_packet pckt);
+__syscall() int espi_send_oob(struct device *dev, struct espi_oob_packet pckt);
 
 static inline int z_impl_espi_send_oob(struct device *dev,
 				       struct espi_oob_packet pckt)
@@ -585,7 +585,7 @@ static inline int z_impl_espi_send_oob(struct device *dev,
  *
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_receive_oob(struct device *dev,
+__syscall() int espi_receive_oob(struct device *dev,
 			       struct espi_oob_packet pckt);
 
 static inline int z_impl_espi_receive_oob(struct device *dev,
@@ -614,7 +614,7 @@ static inline int z_impl_espi_receive_oob(struct device *dev,
  * @retval -EBUSY eSPI flash channel is not ready or disabled by master.
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_read_flash(struct device *dev,
+__syscall() int espi_read_flash(struct device *dev,
 			      struct espi_flash_packet pckt);
 
 static inline int z_impl_espi_flash_read(struct device *dev,
@@ -643,7 +643,7 @@ static inline int z_impl_espi_flash_read(struct device *dev,
  * @retval -EBUSY eSPI flash channel is not ready or disabled by master.
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_write_flash(struct device *dev,
+__syscall() int espi_write_flash(struct device *dev,
 			       struct espi_flash_packet pckt);
 
 static inline int z_impl_espi_flash_write(struct device *dev,
@@ -672,7 +672,7 @@ static inline int z_impl_espi_flash_write(struct device *dev,
  * @retval -EBUSY eSPI flash channel is not ready or disabled by master.
  * @retval -EIO General input / output error, failed request to master.
  */
-__syscall int espi_flash_erase(struct device *dev,
+__syscall() int espi_flash_erase(struct device *dev,
 			       struct espi_flash_packet pckt);
 
 static inline int z_impl_espi_flash_erase(struct device *dev,

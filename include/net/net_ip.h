@@ -1237,7 +1237,7 @@ struct sockaddr_can_ptr *net_can_ptr(const struct sockaddr_ptr *addr)
  *
  * @return 0 if ok, < 0 if error
  */
-__syscall int net_addr_pton(sa_family_t family, const char *src, void *dst);
+__syscall() int net_addr_pton(sa_family_t family, const char *src, void *dst);
 
 /**
  * @brief Convert IP address to string form.
@@ -1250,7 +1250,7 @@ __syscall int net_addr_pton(sa_family_t family, const char *src, void *dst);
  *
  * @return dst pointer if ok, NULL if error
  */
-__syscall char *net_addr_ntop(sa_family_t family, const void *src,
+__syscall() char *net_addr_ntop(sa_family_t family, const void *src,
 			      char *dst, size_t size);
 
 /**

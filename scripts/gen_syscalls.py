@@ -295,7 +295,7 @@ def marshall_defs(func_name, func_type, args):
     return mrsh, mrsh_name
 
 def analyze_fn(match_group):
-    func, args = match_group
+    macarg, func, args = match_group
 
     try:
         if args == "void":
@@ -367,7 +367,7 @@ def main():
         handlers.append(handler)
 
         if mrsh:
-            syscall = typename_split(match_group[0])[1]
+            syscall = typename_split(match_group[1])[1]
             mrsh_defs[syscall] = mrsh
             mrsh_includes[syscall] = "#include <syscalls/%s>" % fn
 

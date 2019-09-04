@@ -247,7 +247,7 @@ struct spi_driver_api {
  *         transaction: if successful it will return the amount of frames
  *         received, negative errno code otherwise.
  */
-__syscall int spi_transceive(struct device *dev,
+__syscall() int spi_transceive(struct device *dev,
 			     const struct spi_config *config,
 			     const struct spi_buf_set *tx_bufs,
 			     const struct spi_buf_set *rx_bufs);
@@ -400,7 +400,7 @@ static inline int spi_write_async(struct device *dev,
  * @param dev Pointer to the device structure for the driver instance
  * @param config Pointer to a valid spi_config structure instance.
  */
-__syscall int spi_release(struct device *dev,
+__syscall() int spi_release(struct device *dev,
 			  const struct spi_config *config);
 
 static inline int z_impl_spi_release(struct device *dev,

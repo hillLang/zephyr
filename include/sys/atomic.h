@@ -49,7 +49,7 @@ static inline bool atomic_cas(atomic_t *target, atomic_val_t old_value,
 					   __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall int atomic_cas(atomic_t *target, atomic_val_t old_value,
+__syscall() int atomic_cas(atomic_t *target, atomic_val_t old_value,
 			 atomic_val_t new_value);
 
 #else
@@ -74,7 +74,7 @@ static inline atomic_val_t atomic_add(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_add(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_add(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_add(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_add(atomic_t *target, atomic_val_t value);
 #endif
@@ -96,7 +96,7 @@ static inline atomic_val_t atomic_sub(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_sub(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_sub(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_sub(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_sub(atomic_t *target, atomic_val_t value);
 #endif
@@ -180,7 +180,7 @@ static inline atomic_val_t atomic_set(atomic_t *target, atomic_val_t value)
 	return __atomic_exchange_n(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_set(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_set(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_set(atomic_t *target, atomic_val_t value);
 #endif
@@ -223,7 +223,7 @@ static inline atomic_val_t atomic_or(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_or(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_or(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_or(atomic_t *target, atomic_val_t value);
 
 #else
 extern atomic_val_t atomic_or(atomic_t *target, atomic_val_t value);
@@ -247,7 +247,7 @@ static inline atomic_val_t atomic_xor(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_xor(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_xor(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_xor(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_xor(atomic_t *target, atomic_val_t value);
 #endif
@@ -270,7 +270,7 @@ static inline atomic_val_t atomic_and(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_and(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_and(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_and(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_and(atomic_t *target, atomic_val_t value);
 #endif
@@ -293,7 +293,7 @@ static inline atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value)
 	return __atomic_fetch_nand(target, value, __ATOMIC_SEQ_CST);
 }
 #elif defined(CONFIG_ATOMIC_OPERATIONS_C)
-__syscall atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value);
+__syscall() atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value);
 #else
 extern atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value);
 #endif

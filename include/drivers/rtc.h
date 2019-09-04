@@ -58,21 +58,21 @@ struct rtc_driver_api {
 	rtc_api_get_pending_int get_pending_int;
 };
 
-__deprecated __syscall u32_t rtc_read(struct device *dev);
+__deprecated __syscall() u32_t rtc_read(struct device *dev);
 
 static inline u32_t z_impl_rtc_read(struct device *dev)
 {
 	return counter_read(dev);
 }
 
-__deprecated __syscall void rtc_enable(struct device *dev);
+__deprecated __syscall() void rtc_enable(struct device *dev);
 
 static inline void z_impl_rtc_enable(struct device *dev)
 {
 	counter_start(dev);
 }
 
-__deprecated __syscall void rtc_disable(struct device *dev);
+__deprecated __syscall() void rtc_disable(struct device *dev);
 
 static inline void z_impl_rtc_disable(struct device *dev)
 {
@@ -113,7 +113,7 @@ __deprecated static inline int rtc_set_config(struct device *dev,
 	return err;
 }
 
-__deprecated __syscall int rtc_set_alarm(struct device *dev,
+__deprecated __syscall() int rtc_set_alarm(struct device *dev,
 					 const u32_t alarm_val);
 
 static inline int z_impl_rtc_set_alarm(struct device *dev,
@@ -142,7 +142,7 @@ static inline int z_impl_rtc_set_alarm(struct device *dev,
  * @retval 1 if the rtc interrupt is pending.
  * @retval 0 if no rtc interrupt is pending.
  */
-__deprecated __syscall int rtc_get_pending_int(struct device *dev);
+__deprecated __syscall() int rtc_get_pending_int(struct device *dev);
 
 static inline int z_impl_rtc_get_pending_int(struct device *dev)
 {

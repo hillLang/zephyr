@@ -260,7 +260,7 @@ static inline int dma_reload(struct device *dev, u32_t channel,
  * @retval 0 if successful.
  * @retval Negative errno code if failure.
  */
-__syscall int dma_start(struct device *dev, u32_t channel);
+__syscall() int dma_start(struct device *dev, u32_t channel);
 
 static inline int z_impl_dma_start(struct device *dev, u32_t channel)
 {
@@ -283,7 +283,7 @@ static inline int z_impl_dma_start(struct device *dev, u32_t channel)
  * @retval 0 if successful.
  * @retval Negative errno code if failure.
  */
-__syscall int dma_stop(struct device *dev, u32_t channel);
+__syscall() int dma_stop(struct device *dev, u32_t channel);
 
 static inline int z_impl_dma_stop(struct device *dev, u32_t channel)
 {

@@ -127,9 +127,9 @@
  * not used).
  */
 #ifndef ZTEST_UNITTEST
-#define __syscall static inline
+#define __syscall() static inline
 #else
-#define __syscall
+#define __syscall()
 #endif /* #ifndef ZTEST_UNITTEST */
 
 #ifndef BUILD_ASSERT

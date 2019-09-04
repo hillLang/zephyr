@@ -292,7 +292,7 @@ void z_sys_device_do_config_level(s32_t level);
  *
  * @return pointer to device structure; NULL if not found or cannot be used.
  */
-__syscall struct device *device_get_binding(const char *name);
+__syscall() struct device *device_get_binding(const char *name);
 
 /**
  * @}

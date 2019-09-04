@@ -27,7 +27,7 @@ import os
 import json
 
 api_regex = re.compile(r'''
-__syscall\s+                    # __syscall attribute, must be first
+__syscall\((.*)\)\s+            # __syscall attribute, must be first
 ([^(]+)                         # type and name of system call (split later)
 [(]                             # Function opening parenthesis
 ([^)]*)                         # Arg list (split later)

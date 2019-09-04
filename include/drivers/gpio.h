@@ -120,7 +120,7 @@ struct gpio_driver_api {
 	gpio_api_get_pending_int get_pending_int;
 };
 
-__syscall int gpio_config(struct device *port, int access_op, u32_t pin,
+__syscall() int gpio_config(struct device *port, int access_op, u32_t pin,
 			  int flags);
 
 static inline int z_impl_gpio_config(struct device *port, int access_op,
@@ -132,7 +132,7 @@ static inline int z_impl_gpio_config(struct device *port, int access_op,
 	return api->config(port, access_op, pin, flags);
 }
 
-__syscall int gpio_write(struct device *port, int access_op, u32_t pin,
+__syscall() int gpio_write(struct device *port, int access_op, u32_t pin,
 			 u32_t value);
 
 static inline int z_impl_gpio_write(struct device *port, int access_op,
@@ -144,7 +144,7 @@ static inline int z_impl_gpio_write(struct device *port, int access_op,
 	return api->write(port, access_op, pin, value);
 }
 
-__syscall int gpio_read(struct device *port, int access_op, u32_t pin,
+__syscall() int gpio_read(struct device *port, int access_op, u32_t pin,
 			u32_t *value);
 
 static inline int z_impl_gpio_read(struct device *port, int access_op,
@@ -156,7 +156,7 @@ static inline int z_impl_gpio_read(struct device *port, int access_op,
 	return api->read(port, access_op, pin, value);
 }
 
-__syscall int gpio_enable_callback(struct device *port, int access_op,
+__syscall() int gpio_enable_callback(struct device *port, int access_op,
 				   u32_t pin);
 
 static inline int z_impl_gpio_enable_callback(struct device *port,
@@ -172,7 +172,7 @@ static inline int z_impl_gpio_enable_callback(struct device *port,
 	return api->enable_callback(port, access_op, pin);
 }
 
-__syscall int gpio_disable_callback(struct device *port, int access_op,
+__syscall() int gpio_disable_callback(struct device *port, int access_op,
 				    u32_t pin);
 
 static inline int z_impl_gpio_disable_callback(struct device *port,
@@ -418,7 +418,7 @@ __deprecated static inline int gpio_port_disable_callback(struct device *port)
  * @retval status != 0 if at least one gpio interrupt is pending.
  * @retval 0 if no gpio interrupt is pending.
  */
-__syscall int gpio_get_pending_int(struct device *dev);
+__syscall() int gpio_get_pending_int(struct device *dev);
 
 /**
  * @internal
