@@ -152,6 +152,12 @@ static ALWAYS_INLINE bool should_preempt(struct k_thread *thread,
 	return false;
 }
 
+static void queue_thread(struct k_thread *thread)
+{
+	_priq_run_add(&_kernel.ready_q.runq, thread);
+	z_mark_thread_as_queued(thread);
+}
+
 #ifdef CONFIG_SCHED_CPU_MASK
 static ALWAYS_INLINE struct k_thread *_priq_dumb_mask_best(sys_dlist_t *pq)
 {
@@ -231,8 +237,7 @@ static ALWAYS_INLINE struct k_thread *next_up(void)
 	/* Put _current back into the queue */
 	if (thread != _current && active &&
 		!z_is_idle_thread_object(_current) && !queued) {
-		_priq_run_add(&_kernel.ready_q.runq, _current);
-		z_mark_thread_as_queued(_current);
+		queue_thread(_current);
 	}
 
 	/* Take the new _current out of the queue */
@@ -362,8 +367,7 @@ static void update_cache(int preempt_ok)
 void z_add_thread_to_ready_q(struct k_thread *thread)
 {
 	LOCKED(&sched_spinlock) {
-		_priq_run_add(&_kernel.ready_q.runq, thread);
-		z_mark_thread_as_queued(thread);
+		queue_thread(thread);
 		update_cache(0);
 #if defined(CONFIG_SMP) &&  defined(CONFIG_SCHED_IPI_SUPPORTED)
 		arch_sched_ipi();
@@ -377,8 +381,7 @@ void z_move_thread_to_end_of_prio_q(struct k_thread *thread)
 		if (z_is_thread_queued(thread)) {
 			_priq_run_remove(&_kernel.ready_q.runq, thread);
 		}
-		_priq_run_add(&_kernel.ready_q.runq, thread);
-		z_mark_thread_as_queued(thread);
+		queue_thread(thread);
 		update_cache(thread == _current);
 	}
 }
@@ -1022,8 +1025,7 @@ void z_impl_k_yield(void)
 				_priq_run_remove(&_kernel.ready_q.runq,
 						 _current);
 			}
-			_priq_run_add(&_kernel.ready_q.runq, _current);
-			z_mark_thread_as_queued(_current);
+			queue_thread(_current);
 			update_cache(1);
 		}
 	}
