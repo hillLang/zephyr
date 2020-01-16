@@ -154,6 +154,23 @@ static ALWAYS_INLINE bool should_preempt(struct k_thread *thread,
 
 static void queue_thread(struct k_thread *thread)
 {
+#ifdef CONFIG_SMP
+	/* This enqueue operation on _current happens (obviously)
+	 * before an incoming swap, so other CPUs need to be able to
+	 * wait for completion by spinning on the switch handle to be
+	 * written in arch_switch().
+	 *
+	 * NOTE: it's likely that future architectures are going to
+	 * need a memory barrier of some kind here to enforce ordering
+	 * (i.e. that the handle gets nulled out before the queue is
+	 * modified as seen by all CPUs).  We don't have a framework
+	 * for that in Zephyr yet.
+	 */
+	if (thread == _current) {
+		thread->switch_handle = NULL;
+	}
+#endif
+
 	_priq_run_add(&_kernel.ready_q.runq, thread);
 	z_mark_thread_as_queued(thread);
 }
@@ -245,6 +262,10 @@ static ALWAYS_INLINE struct k_thread *next_up(void)
 		_priq_run_remove(&_kernel.ready_q.runq, thread);
 	}
 	z_mark_thread_as_not_queued(thread);
+
+	/* Spin to the end of a swap on the other CPU */
+	while (((volatile void *)&thread->switch_handle) == NULL) {
+	}
 
 	return thread;
 #endif
