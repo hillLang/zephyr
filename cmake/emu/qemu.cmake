@@ -311,7 +311,9 @@ foreach(target ${qemu_targets})
     ${QEMU_EXTRA_FLAGS}
     ${MORE_FLAGS_FOR_${target}}
     ${QEMU_SMP_FLAGS}
+    -soundhw hda
     ${QEMU_KERNEL_OPTION}
+    
     DEPENDS ${logical_target_for_zephyr_elf}
     WORKING_DIRECTORY ${APPLICATION_BINARY_DIR}
     COMMENT "${QEMU_PIPE_COMMENT}[QEMU] CPU: ${QEMU_CPU_TYPE_${ARCH}}"
