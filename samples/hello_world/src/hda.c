@@ -47,19 +47,27 @@ enum hda_regs {
 	DPIBUBASE	= 0x74,	/* DMA Position Buffer Upper Base */
 };
 
+enum stream_regs {
+	STSCTL	= 0x0,
+	LPIB	= 0x04,
+	CBL	= 0x08,
+	LVI	= 0x0c, /* 16 bit */
+	FIFOD	= 0x10, /* 16 bit */
+	FMT	= 0x12, /* 16 bit */
+	BDPL	= 0x18,
+	BDPU	= 0x1c,
+};
+
 enum codec_cmds {
 	GET_NODE_PARAM = 0xf00,
+	GET_CONN_ENTRY = 0xf02,
 };
 
 enum node_params {
 	IDS = 0,
-
 	REVISION = 0x02,
-
 	NODE_COUNT = 0x04,
 	FUNC_GROUP_TYPE = 0x05,
-
-
 	AUD_GROUP_CAP = 0x08,
 	AUD_WIDGET_CAP = 0x09,
 	SUPP_PCM_RATES = 0x0a,
@@ -78,13 +86,20 @@ enum node_params {
 #define HDA_REG16(r) (*((volatile u16_t *)(long)(HDA_BAR0 + r)))
 #define HDA_REG32(r) (*((volatile u32_t *)(long)(HDA_BAR0 + r)))
 
-/* Hardware requires the buffers be aligned like this!  Note carefully
- * that RIRB entries are twice the size of CORB commands.
+#define STREAMREG(s, r) (0x80 + (s * 32) + r)
+
+#define HDA_STREAM_REG8(s, r) HDA_REG8(STREAMREG(s, r))
+#define HDA_STREAM_REG16(s, r) HDA_REG16(STREAMREG(s, r))
+#define HDA_STREAM_REG32(s, r) HDA_REG32(STREAMREG(s, r))
+
+/* Hardware requires the buffers be aligned to 128 byte boundaries.
+ * Note carefully that RIRB entries are TWICE the size of CORB
+ * commands.
  */
 static volatile u32_t __aligned(128) corb[RING_BUF_SIZE];
 static volatile u64_t __aligned(128) rirb[RING_BUF_SIZE];
 
-int last_rirb;
+static int last_rirb;
 
 static void enqueue_cmd(int codec, int node, int cmd, int data)
 {
@@ -111,37 +126,135 @@ static int await_rirb(void)
 
 static u64_t sync_codec_cmd(int codec, int node, int cmd, int data)
 {
-	// FIXME: this is intolerant of existing commands in flight
-	// (it assume's we've transmitted everything) and of
-	// "unsolicited" out of band messages from the codecs.
+	/* NOTE: this is intolerant of existing commands in flight (it
+	 * assume's we've transmitted everything) and of "unsolicited"
+	 * out of band messages from the codecs.
+	 */
 	enqueue_cmd(codec, node, cmd, data);
 	return rirb[await_rirb()];
 }
 
+static void enum_node(int codec, int node, int depth)
+{
+	int widget_type = 0;
+	u64_t val;
+	char prefix[16];
+	for(int i=0; i<depth; i++) {
+		prefix[2*i] = ' ';
+		prefix[2*i+1] = ' ';
+	}
+	prefix[2*depth] = 0;
+	printk("\n%s Codec%d Node%d (%s):\n", prefix, codec, node,
+	       depth == 0 ? "root"
+	       : (depth == 1 ? "function group" : "widget"));
+
+	if (node == 0) {
+		val = sync_codec_cmd(codec, node, GET_NODE_PARAM, IDS);
+		printk("%s  $VendorID = %xh\n", prefix, (int)val);
+		val = sync_codec_cmd(codec, node, GET_NODE_PARAM, REVISION);
+		printk("%s  $RevisionID = %xh\n", prefix, (int)val);
+	}
+
+	if (depth == 1) {
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, FUNC_GROUP_TYPE);
+		printk("%s  $FuncGrpType = %xh\n", prefix, (int)val);
+
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, AUD_GROUP_CAP);
+		printk("%s  $AudGrpCaps = %xh\n", prefix, (int)val);
+	}
+
+	if (depth > 1) {
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, AUD_WIDGET_CAP);
+		widget_type = (val >> 20) & 0xf;
+		printk("%s  $AudWidgetCaps = %xh (type: %xh)\n",
+		       prefix, (int)val, widget_type);
+	}
+
+	if (depth != 0) {
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, SUPP_PCM_RATES);
+		if (val) {
+			printk("%s  $SupportedPCM = %xh\n", prefix, (int)val);
+		}
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, SUPP_FORMATS);
+		if (val) {
+			printk("%s  $SupportedStreamFormats = %xh\n",
+			       prefix, (int)val);
+		}
+	}
+
+	if (depth > 1 && widget_type == 4) {
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, PIN_CAP);
+		printk("%s  $PinCaps = %xh\n", prefix, (int)val);
+	}
+
+	for (int i = 0; depth > 0 && i < 2; i++) {
+		int arg = i ? OUT_AMP_CAP : IN_AMP_CAP;
+		val = sync_codec_cmd(codec, node,
+				     GET_NODE_PARAM, arg);
+
+		if (!val) {
+			continue;
+		}
+
+		printk("%s  %sputAmp: stepsz=%d nsteps=%d offset=%d%s\n",
+		       prefix, i ? "Out" : "In", (int)((val >> 16) & 0x7f),
+		       (int)((val >> 8) & 0x7f), (int)(val & 0x7f),
+		       (val & (1 << 31)) ? " (mute works)" : "");
+	}
+
+	val = sync_codec_cmd(codec, node,
+			     GET_NODE_PARAM, CONN_LIST_LEN);
+	if (val > 0) {
+		// FIXME: only supports fetching one connection!
+		val = sync_codec_cmd(codec, node, GET_CONN_ENTRY, 0);
+		printk("%s  Connections: [ %d ]\n", prefix, (int)val);
+	}
+
+	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, SUPP_POWER_STATES);
+	if (val) {
+		printk("%s  $SuppPowerStates: %xh\n", prefix, (int)val);
+	}
+
+	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, PROC_CAP);
+	if (val) {
+		printk("%s  $ProcessingCapabilities: %xh\n", prefix, (int)val);
+	}
+
+	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, GPIO_COUNT);
+	if (val) {
+		printk("%s  $GPIOCount: %xh\n", prefix, (int)val);
+	}
+
+	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, VOL_CAP);
+	if (val) {
+		printk("%s  $VolumeCaps: %xh\n", prefix, (int)val);
+	}
+
+	/* Now enumerate children */
+	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, NODE_COUNT);
+
+	int start_node = (val >> 16) & 0xff;
+	int num_nodes = val & 0xff;
+
+	for (int n = 0; n < num_nodes; n++) {
+		enum_node(codec, start_node + n, depth + 1);
+	}
+}
+
 void hda_test(void)
 {
-	printk("\n*** HDA ***\n");
-
 	/* Reset the device by pulsing low bit of GCTL */
 	HDA_REG32(GCTL) = 0;
 	while ((HDA_REG32(GCTL) & 1) != 0) {
 	}
 	HDA_REG32(GCTL) = 1;
 	while ((HDA_REG32(GCTL) & 1) == 0) {
-	}
-
-	printk("GCAP %xh VER %d.%d\n",
-	       HDA_REG16(GCAP), HDA_REG8(VMAJ), HDA_REG8(VMIN));
-	printk("WAKESTS %xh\n", HDA_REG16(WAKESTS));
-	printk("GCTL %xh GSTS %xh INTCTL %xh INTSTS %xh\n",
-	       HDA_REG32(GCTL), HDA_REG16(GSTS),
-	       HDA_REG32(INTCTL), HDA_REG32(INTSTS));
-	printk("ICIS %xh\n", HDA_REG16(ICIS));
-
-	u32_t wc0 = HDA_REG32(WALCLK), cyc0 = k_cycle_get_32();
-	for (int i=0; i<4; i++) {
-		printk("  WALCLK %d cyc %d\n",
-		       HDA_REG32(WALCLK) - wc0, k_cycle_get_32() - cyc0);
 	}
 
 	int szbits = RING_BUF_SIZE == 256 ? 2 : (RING_BUF_SIZE == 16 ? 1 : 0);
@@ -167,11 +280,6 @@ void hda_test(void)
 	while ((HDA_REG8(CORBCTL) & 0x2) == 0) {
 	}
 
-	printk("CORB BASE %x:%xh (&corb[0] %p)\n", HDA_REG32(CORBUBASE), HDA_REG32(CORBLBASE), &corb[0]);
-	printk("CORBWP %d CORBRP %d CORBCTL %xh CORBSTS %xh CORBSIZE %xh\n",
-	       HDA_REG16(CORBWP), HDA_REG16(CORBRP), HDA_REG8(CORBCTL),
-	       HDA_REG8(CORBSTS), HDA_REG8(CORBSIZE));
-
 	/* The RIRB initializes similarly, but the "Read Pointer" is
 	 * our side (implemented in software) so there is no register.
 	 */
@@ -193,14 +301,41 @@ void hda_test(void)
 	 */
 	HDA_REG16(RINTCNT) = 0xff;
 
+	/********************************************************************/
+	/* Debug code to dump state: */
+
+	printk("\n*** HDA ***\n");
+
+	printk("GCAP %xh VER %d.%d\n",
+	       HDA_REG16(GCAP), HDA_REG8(VMAJ), HDA_REG8(VMIN));
+	printk("WAKESTS %xh\n", HDA_REG16(WAKESTS));
+	printk("GCTL %xh GSTS %xh INTCTL %xh INTSTS %xh\n",
+	       HDA_REG32(GCTL), HDA_REG16(GSTS),
+	       HDA_REG32(INTCTL), HDA_REG32(INTSTS));
+	printk("ICIS %xh\n", HDA_REG16(ICIS));
+
+	/* Seems like on qemu, the WALCLK register ticks 4x slower
+	 * than the TSC.
+	 */
+	u32_t wc0 = HDA_REG32(WALCLK), cyc0 = k_cycle_get_32();
+	for (int i=0; i<4; i++) {
+		printk("  WALCLK %d cyc %d\n",
+		       HDA_REG32(WALCLK) - wc0, k_cycle_get_32() - cyc0);
+	}
+
+	printk("CORB BASE %x:%xh (&corb[0] %p)\n", HDA_REG32(CORBUBASE), HDA_REG32(CORBLBASE), &corb[0]);
+	printk("CORBWP %d CORBRP %d CORBCTL %xh CORBSTS %xh CORBSIZE %xh\n",
+	       HDA_REG16(CORBWP), HDA_REG16(CORBRP), HDA_REG8(CORBCTL),
+	       HDA_REG8(CORBSTS), HDA_REG8(CORBSIZE));
+
 	printk("RIRBWP %d RIRBCTL %xh RIRBSTS %xh RIRBSIZE %xh\n",
 	       HDA_REG16(RIRBWP), HDA_REG8(RIRBCTL),
 	       HDA_REG8(RIRBSTS), HDA_REG8(RIRBSIZE));
 	printk("RIRB BASE %x:%xh (&rirb[0] %p)\n", HDA_REG32(RIRBUBASE), HDA_REG32(RIRBLBASE), &rirb[0]);
 
-	u64_t val = sync_codec_cmd(0, 0, GET_NODE_PARAM, IDS);
-	printk("C0 N0 IDS: %llxh\n", val);
-
-	val = sync_codec_cmd(0, 0, GET_NODE_PARAM, NODE_COUNT);
-	printk("C0 N0 NODE_COUNT: %llxh\n", val);
+	for (int c = 0; c < 16; c++) {
+		if ((HDA_REG16(WAKESTS) & (1 << c)) != 0) {
+			enum_node(c, 0, 0);
+		}
+	}
 }
