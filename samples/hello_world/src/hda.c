@@ -150,26 +150,26 @@ static void enum_node(int codec, int node, int depth)
 
 	if (node == 0) {
 		val = sync_codec_cmd(codec, node, GET_NODE_PARAM, IDS);
-		printk("%s  $VendorID = %xh\n", prefix, (int)val);
+		printk("%s  Vendor ID = %xh\n", prefix, (int)val);
 		val = sync_codec_cmd(codec, node, GET_NODE_PARAM, REVISION);
-		printk("%s  $RevisionID = %xh\n", prefix, (int)val);
+		printk("%s  Revision ID = %xh\n", prefix, (int)val);
 	}
 
 	if (depth == 1) {
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, FUNC_GROUP_TYPE);
-		printk("%s  $FuncGrpType = %xh\n", prefix, (int)val);
+		printk("%s  Function Group Type = %xh\n", prefix, (int)val);
 
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, AUD_GROUP_CAP);
-		printk("%s  $AudGrpCaps = %xh\n", prefix, (int)val);
+		printk("%s  Audio Group Capabilities = %xh\n", prefix, (int)val);
 	}
 
 	if (depth > 1) {
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, AUD_WIDGET_CAP);
 		widget_type = (val >> 20) & 0xf;
-		printk("%s  $AudWidgetCaps = %xh (type: %xh)\n",
+		printk("%s  Audio Widget Capabilities = %xh (type: %xh)\n",
 		       prefix, (int)val, widget_type);
 	}
 
@@ -177,12 +177,12 @@ static void enum_node(int codec, int node, int depth)
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, SUPP_PCM_RATES);
 		if (val) {
-			printk("%s  $SupportedPCM = %xh\n", prefix, (int)val);
+			printk("%s  Supported PCM Rates = %xh\n", prefix, (int)val);
 		}
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, SUPP_FORMATS);
 		if (val) {
-			printk("%s  $SupportedStreamFormats = %xh\n",
+			printk("%s  Supported Stream Formats = %xh\n",
 			       prefix, (int)val);
 		}
 	}
@@ -190,7 +190,7 @@ static void enum_node(int codec, int node, int depth)
 	if (depth > 1 && widget_type == 4) {
 		val = sync_codec_cmd(codec, node,
 				     GET_NODE_PARAM, PIN_CAP);
-		printk("%s  $PinCaps = %xh\n", prefix, (int)val);
+		printk("%s  Pin Capabilities = %xh\n", prefix, (int)val);
 	}
 
 	for (int i = 0; depth > 0 && i < 2; i++) {
@@ -202,7 +202,7 @@ static void enum_node(int codec, int node, int depth)
 			continue;
 		}
 
-		printk("%s  %sputAmp: stepsz=%d nsteps=%d offset=%d%s\n",
+		printk("%s  %sput Amplifier stepsz=%d nsteps=%d offset=%d%s\n",
 		       prefix, i ? "Out" : "In", (int)((val >> 16) & 0x7f),
 		       (int)((val >> 8) & 0x7f), (int)(val & 0x7f),
 		       (val & (1 << 31)) ? " (mute works)" : "");
@@ -218,22 +218,22 @@ static void enum_node(int codec, int node, int depth)
 
 	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, SUPP_POWER_STATES);
 	if (val) {
-		printk("%s  $SuppPowerStates: %xh\n", prefix, (int)val);
+		printk("%s  Supported Power States: %xh\n", prefix, (int)val);
 	}
 
 	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, PROC_CAP);
 	if (val) {
-		printk("%s  $ProcessingCapabilities: %xh\n", prefix, (int)val);
+		printk("%s  Processing Capabilities: %xh\n", prefix, (int)val);
 	}
 
 	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, GPIO_COUNT);
 	if (val) {
-		printk("%s  $GPIOCount: %xh\n", prefix, (int)val);
+		printk("%s  GPIO Count: %xh\n", prefix, (int)val);
 	}
 
 	val = sync_codec_cmd(codec, node, GET_NODE_PARAM, VOL_CAP);
 	if (val) {
-		printk("%s  $VolumeCaps: %xh\n", prefix, (int)val);
+		printk("%s  Volume Capabilties: %xh\n", prefix, (int)val);
 	}
 
 	/* Now enumerate children */
