@@ -111,7 +111,10 @@ struct stream_desc {
 	/* Abstract assigned stream identifier, should be >= 1 */
 	int stream_id;
 
-	/* Index within stream register banks */
+	/* Index within stream register banks (unified, so a block of
+	 * input streams have indices before the output streams before
+	 * the bidirectional streams)
+	 */
 	int stream_idx;
 
 	/* Which codec device's widgets are we using? */
@@ -130,18 +133,26 @@ struct stream_desc {
 
 struct stream_bufs {
 	struct buf_desc_entry __aligned(128) buf_desc_list[NUM_BUFS];
-	// FIXME: misalignment right here
-	unsigned short __aligned(128) input_buf[NUM_BUFS][BUF_SAMPLES];
-	unsigned short __aligned(128) output_buf[NUM_BUFS][BUF_SAMPLES];
+	// FIXME: empty space misalignment right here
+	unsigned short __aligned(128) bufs[NUM_BUFS][BUF_SAMPLES];
 };
 
 static struct stream_bufs out_stream_bufs;
-static struct stream_desc out_stream = {
+static const struct stream_desc out_stream = {
 	.stream_id = 1,
 	.stream_idx = 4,
 	.codec_id = 0,
 	.widget_chain = { 3, 2 },
-	.bufs = &out_stream_bufs;
+	.bufs = &out_stream_bufs,
+};
+
+static struct stream_bufs in_stream_bufs;
+static const struct stream_desc in_stream = {
+	.stream_id = 2,
+	.stream_idx = 0,
+	.codec_id = 0,
+	.widget_chain = { 4, 5 },
+	.bufs = &in_stream_bufs,
 };
 
 /* Hardware requires the buffers be aligned to 128 byte boundaries.
@@ -152,10 +163,6 @@ static volatile u32_t __aligned(128) corb[RING_BUF_SIZE];
 static volatile u64_t __aligned(128) rirb[RING_BUF_SIZE];
 
 static int last_rirb;
-
-/* Three small (256 byte) buffers each for output and input streams. */
-// FIXME: move to stream_desc
-static unsigned short __aligned(128) output_buf[3][128];
 
 static void enqueue_cmd(int codec, int node, int cmd, int data)
 {
@@ -194,7 +201,6 @@ static u64_t sync_codec_cmd(int codec, int node, int cmd, int data)
  * full buffer length.  With a 128 sample buffer at 48 kHz, that comes
  * out to a 375 Hz tone (roughly the F# above middle C).
  */
-// FIXME: move to stream_desc
 static void init_output_bufs(void)
 {
 	int val, halfway = BUF_SAMPLES / 2;
@@ -203,12 +209,12 @@ static void init_output_bufs(void)
 		for (int i = 0; i < halfway; i++) {
 			/* Increasing ramp */
 			val = (0xffff * i) / halfway;
-			output_buf[b][i] = val;
+			out_stream_bufs.bufs[b][i] = val;
 		}
 		for (int i = 0; i + halfway < BUF_SAMPLES; i++) {
 			/* Decreasing ramp */
 			val = 0xffff - ((0xffff * i) / halfway);
-			output_buf[b][halfway + i] = val;
+			out_stream_bufs.bufs[b][halfway + i] = val;
 		}
 	}
 }
@@ -338,9 +344,90 @@ static void dump_stream(int idx)
 	printk(" BDPU=%xh\n", HDA_STREAM_REG32(idx, BDPU));
 }
 
+/* Returns a sample format value in the bit format described for the
+ * stream FMT registers.
+ *
+ * rate48: clock base, true for 48 kHz, false for 44.1
+ * mul: clock multiplier, in the range 1-4
+ * div: clock divisor, in the range 1-8
+ * bits: bits per sample, one of {8, 16, 20, 24, 32}
+ * n_chans: number of channels in the stream, in the range 1-16
+ */
+static u16_t sample_format(bool rate48, int mul, int div,
+			   int bits, int n_chans)
+{
+	u16_t ret = rate48 ? 0 : (1 << 14);
+
+	ret |= ((mul - 1) << 11);
+	ret |= ((div - 1) << 8);
+	ret |= (n_chans - 1);
+
+	u16_t bitsfld;
+	switch (bits) {
+	case 8: bitsfld = 0; break;
+	case 20: bitsfld = 2; break;
+	case 24: bitsfld = 3; break;
+	case 32: bitsfld = 4; break;
+	default: bitsfld = 1; break; /* 16 bit samples */
+	};
+
+	ret |= bitsfld << 4;
+
+	return ret;
+}
+
+static void init_stream(const struct stream_desc *s)
+{
+	int si = s->stream_idx;
+
+	/* Reset: write a 1 to the low bit of CTL, wait for it to
+	 * appear in a read, then set it to zero and wait for that to
+	 * appear
+	 */
+	// FIXME unifiy with other reset sequence
+	HDA_STREAM_REG32(si, STSCTL) |= 1;
+	while ((HDA_STREAM_REG32(si, STSCTL) & 1) == 0) {
+	}
+	HDA_STREAM_REG32(si, STSCTL) &= ~1;
+	while ((HDA_STREAM_REG32(si, STSCTL) & 1) != 0) {
+	}
+
+	/* Set stream ID */
+	// FIXME: also need to set interrupt enable here, and
+	// bidirectional stream direction where applicable.
+	HDA_STREAM_REG32(si, STSCTL) |= (s->stream_id << 20);
+
+	HDA_STREAM_REG16(si, FMT) = sample_format(true, 1, 1, 16, 2);
+
+	/* Buffer descriptor pointer & buffer count */
+	for (int i = 0; i < NUM_BUFS; i++) {
+		s->bufs->buf_desc_list[i].addr = (long) &s->bufs[i];
+		s->bufs->buf_desc_list[i].len = BUF_SAMPLES * 2;
+		s->bufs->buf_desc_list[i].interrupt = 0;
+	}
+
+	u64_t bdl = (long) &s->bufs->buf_desc_list;
+	HDA_STREAM_REG32(si, BDPL) = bdl & 0xffffffff;
+	HDA_STREAM_REG32(si, BDPU) = bdl >> 32;
+	HDA_STREAM_REG16(si, LVI) = NUM_BUFS - 1;
+	HDA_STREAM_REG16(si, CBL) = NUM_BUFS * BUF_SAMPLES * 2;
+
+	/* Now initialize the individual widgets */
+	for (int i = 0; s->widget_chain[i] != 0; i++) {
+		int w = s->widget_chain[i];
+
+		// FIXME: exactly how to detect what needs to be done?
+		// SetPinWidgetControl cmd to pins
+		// SetStreamChannel to DAC
+		// SetPowerState to DAC
+		// SetAmplifierGain to DAC
+	}
+}
+
 void hda_test(void)
 {
 	/* Reset the device by pulsing low bit of GCTL */
+	// FIXME unifiy with other reset sequence
 	HDA_REG32(GCTL) = 0;
 	while ((HDA_REG32(GCTL) & 1) != 0) {
 	}
@@ -446,4 +533,8 @@ void hda_test(void)
 			enum_node(c, 0, 0);
 		}
 	}
+
+	init_output_bufs();
+	init_stream(&in_stream);
+	init_stream(&out_stream);
 }
