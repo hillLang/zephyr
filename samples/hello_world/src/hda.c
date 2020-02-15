@@ -10,6 +10,15 @@
  */
 #define RING_BUF_SIZE 256
 
+/* How many buffers per stream */
+#define NUM_BUFS 3
+
+/* How many samples per buffer */
+#define BUF_SAMPLES 128
+
+/* Maximum number of codecs in a chain that defines a stream */
+#define MAX_STREAM_CODECS 8
+
 enum hda_regs {
 	GCAP		= 0x00,	/* Global Capabilities (16 bit) */
 	VMIN		= 0x02,	/* Minor Version (8 bit) */
@@ -52,7 +61,7 @@ enum stream_regs {
 	LPIB	= 0x04,
 	CBL	= 0x08,
 	LVI	= 0x0c, /* 16 bit */
-	FIFOD	= 0x10, /* 16 bit */
+	FIFOS	= 0x10, /* 16 bit */
 	FMT	= 0x12, /* 16 bit */
 	BDPL	= 0x18,
 	BDPU	= 0x1c,
@@ -92,6 +101,49 @@ enum node_params {
 #define HDA_STREAM_REG16(s, r) HDA_REG16(STREAMREG(s, r))
 #define HDA_STREAM_REG32(s, r) HDA_REG32(STREAMREG(s, r))
 
+struct buf_desc_entry {
+	u64_t addr;
+	u32_t len;
+	u32_t interrupt; /* 1 = "interrupt on completion" */
+}; // FIXME: aligned(128)!
+
+struct stream_desc {
+	/* Abstract assigned stream identifier, should be >= 1 */
+	int stream_id;
+
+	/* Index within stream register banks */
+	int stream_idx;
+
+	/* Which codec device's widgets are we using? */
+	int codec_id;
+
+	/* List of widgets to assemble into the chain, in order from
+	 * the last sink (i.e. an output pin, or an input ADC link) to
+	 * the original source (e.g. DAC link, microphone pin).  Node
+	 * zero is never a widget (it's always a function group) so
+	 * zeros are used to terminate the list.
+	 */
+	int widget_chain[MAX_STREAM_CODECS];
+
+	struct stream_bufs *bufs;
+};
+
+struct stream_bufs {
+	struct buf_desc_entry __aligned(128) buf_desc_list[NUM_BUFS];
+	// FIXME: misalignment right here
+	unsigned short __aligned(128) input_buf[NUM_BUFS][BUF_SAMPLES];
+	unsigned short __aligned(128) output_buf[NUM_BUFS][BUF_SAMPLES];
+};
+
+static struct stream_bufs out_stream_bufs;
+static struct stream_desc out_stream = {
+	.stream_id = 1,
+	.stream_idx = 4,
+	.codec_id = 0,
+	.widget_chain = { 3, 2 },
+	.bufs = &out_stream_bufs;
+};
+
 /* Hardware requires the buffers be aligned to 128 byte boundaries.
  * Note carefully that RIRB entries are TWICE the size of CORB
  * commands.
@@ -100,6 +152,10 @@ static volatile u32_t __aligned(128) corb[RING_BUF_SIZE];
 static volatile u64_t __aligned(128) rirb[RING_BUF_SIZE];
 
 static int last_rirb;
+
+/* Three small (256 byte) buffers each for output and input streams. */
+// FIXME: move to stream_desc
+static unsigned short __aligned(128) output_buf[3][128];
 
 static void enqueue_cmd(int codec, int node, int cmd, int data)
 {
@@ -132,6 +188,29 @@ static u64_t sync_codec_cmd(int codec, int node, int cmd, int data)
 	 */
 	enqueue_cmd(codec, node, cmd, data);
 	return rirb[await_rirb()];
+}
+
+/* Each output buffer implements an identical triangle wave over the
+ * full buffer length.  With a 128 sample buffer at 48 kHz, that comes
+ * out to a 375 Hz tone (roughly the F# above middle C).
+ */
+// FIXME: move to stream_desc
+static void init_output_bufs(void)
+{
+	int val, halfway = BUF_SAMPLES / 2;
+
+	for (int b = 0; b < NUM_BUFS; b++) {
+		for (int i = 0; i < halfway; i++) {
+			/* Increasing ramp */
+			val = (0xffff * i) / halfway;
+			output_buf[b][i] = val;
+		}
+		for (int i = 0; i + halfway < BUF_SAMPLES; i++) {
+			/* Decreasing ramp */
+			val = 0xffff - ((0xffff * i) / halfway);
+			output_buf[b][halfway + i] = val;
+		}
+	}
 }
 
 static void enum_node(int codec, int node, int depth)
@@ -247,6 +326,18 @@ static void enum_node(int codec, int node, int depth)
 	}
 }
 
+static void dump_stream(int idx)
+{
+	printk(" STS/CTL=%xh", HDA_STREAM_REG32(idx, STSCTL));
+	printk(" LPIB=%d", HDA_STREAM_REG32(idx, LPIB));
+	printk(" CBL=%d", HDA_STREAM_REG32(idx, CBL));
+	printk(" LVI=%d\n", HDA_STREAM_REG16(idx, LVI));
+	printk(" FIFOS=%d", HDA_STREAM_REG16(idx, FIFOS));
+	printk(" FMT=%xh", HDA_STREAM_REG16(idx, FMT));
+	printk(" BDPL=%xh", HDA_STREAM_REG32(idx, BDPL));
+	printk(" BDPU=%xh\n", HDA_STREAM_REG32(idx, BDPU));
+}
+
 void hda_test(void)
 {
 	/* Reset the device by pulsing low bit of GCTL */
@@ -332,6 +423,23 @@ void hda_test(void)
 	       HDA_REG16(RIRBWP), HDA_REG8(RIRBCTL),
 	       HDA_REG8(RIRBSTS), HDA_REG8(RIRBSIZE));
 	printk("RIRB BASE %x:%xh (&rirb[0] %p)\n", HDA_REG32(RIRBUBASE), HDA_REG32(RIRBLBASE), &rirb[0]);
+
+	/* Dump stream registers */
+	u32_t gcap = HDA_REG16(GCAP);
+	int stream_idx = 0;
+
+	for (int i = 0; i < ((gcap >> 12) & 0xf); i++) {
+		printk("Input Stream (idx %d)\n", stream_idx);
+		dump_stream(stream_idx++);
+	}
+	for (int i = 0; i < ((gcap >> 8) & 0xf); i++) {
+		printk("Output Stream (idx %d)\n", stream_idx);
+		dump_stream(stream_idx++);
+	}
+	for (int i = 0; i < ((gcap >> 12) & 0xf); i++) {
+		printk("Bidirectional Stream (idx %d)\n", stream_idx);
+		dump_stream(stream_idx++);
+	}
 
 	for (int c = 0; c < 16; c++) {
 		if ((HDA_REG16(WAKESTS) & (1 << c)) != 0) {
