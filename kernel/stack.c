@@ -133,7 +133,7 @@ static inline int z_vrfy_k_stack_push(struct k_stack *stack, stack_data_t data)
 #include <syscalls/k_stack_push_mrsh.c>
 #endif
 
-int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, s32_t timeout)
+int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, k_timeout_t timeout)
 {
 	k_spinlock_key_t key;
 	int result;
@@ -147,7 +147,7 @@ int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, s32_t timeout)
 		return 0;
 	}
 
-	if (timeout == K_NO_WAIT) {
+	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		k_spin_unlock(&stack->lock, key);
 		return -EBUSY;
 	}
@@ -163,7 +163,7 @@ int z_impl_k_stack_pop(struct k_stack *stack, stack_data_t *data, s32_t timeout)
 
 #ifdef CONFIG_USERSPACE
 static inline int z_vrfy_k_stack_pop(struct k_stack *stack,
-				     stack_data_t *data, s32_t timeout)
+				     stack_data_t *data, k_timeout_t timeout)
 {
 	Z_OOPS(Z_SYSCALL_OBJ(stack, K_OBJ_STACK));
 	Z_OOPS(Z_SYSCALL_MEMORY_WRITE(data, sizeof(stack_data_t)));

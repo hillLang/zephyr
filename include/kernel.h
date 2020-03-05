@@ -773,7 +773,7 @@ extern void k_thread_foreach_unlocked(
  * @param p3 3rd entry point parameter.
  * @param prio Thread priority.
  * @param options Thread options.
- * @param delay Scheduling delay (in milliseconds), or K_NO_WAIT (for no delay).
+ * @param delay Scheduling delay, or K_NO_WAIT (for no delay).
  *
  * @return ID of new thread.
  *
@@ -784,7 +784,7 @@ __syscall k_tid_t k_thread_create(struct k_thread *new_thread,
 				  size_t stack_size,
 				  k_thread_entry_t entry,
 				  void *p1, void *p2, void *p3,
-				  int prio, u32_t options, s32_t delay);
+				  int prio, u32_t options, k_timeout_t delay);
 
 /**
  * @brief Drop a thread's privileges permanently to user mode
@@ -882,6 +882,19 @@ void k_thread_system_pool_assign(struct k_thread *thread);
 /**
  * @brief Put the current thread to sleep.
  *
+ * This routine puts the current thread to sleep for @a duration,
+ * specified as a k_timeout_t object.
+ *
+ * @param ms Desired duration of sleep.
+ *
+ * @return Zero if the requested time has elapsed or the number of milliseconds
+ * left to sleep, if thread was woken up by \ref k_wakeup call.
+ */
+__syscall s32_t k_sleep(k_timeout_t ms);
+
+/**
+ * @brief Put the current thread to sleep.
+ *
  * This routine puts the current thread to sleep for @a duration milliseconds.
  *
  * @param ms Number of milliseconds to sleep.
@@ -889,7 +902,10 @@ void k_thread_system_pool_assign(struct k_thread *thread);
  * @return Zero if the requested time has elapsed or the number of milliseconds
  * left to sleep, if thread was woken up by \ref k_wakeup call.
  */
-__syscall s32_t k_sleep(s32_t ms);
+static inline s32_t k_msleep(s32_t ms)
+{
+	return k_sleep(K_TIMEOUT_MS(ms));
+}
 
 /**
  * @brief Put the current thread to sleep with microsecond resolution.
@@ -1474,7 +1490,7 @@ const char *k_thread_state_str(k_tid_t thread_id);
  *
  * @return Timeout delay value.
  */
-#define K_NO_WAIT 0
+#define K_NO_WAIT K_TIMEOUT_NO_WAIT
 
 /**
  * @brief Generate timeout delay from milliseconds.
@@ -1486,7 +1502,7 @@ const char *k_thread_state_str(k_tid_t thread_id);
  *
  * @return Timeout delay value.
  */
-#define K_MSEC(ms)     (ms)
+#define K_MSEC(ms)     K_TIMEOUT_MS(ms)
 
 /**
  * @brief Generate timeout delay from seconds.
@@ -1532,7 +1548,8 @@ const char *k_thread_state_str(k_tid_t thread_id);
  *
  * @return Timeout delay value.
  */
-#define K_FOREVER (-1)
+// FIXME: move docs
+//#define K_FOREVER K_TIMEOUT_TICKS(K_TICKS_FOREVER)
 
 /**
  * @}
@@ -1560,7 +1577,7 @@ struct k_timer {
 	void (*stop_fn)(struct k_timer *timer);
 
 	/* timer period */
-	s32_t period;
+	k_timeout_t period;
 
 	/* timer status */
 	u32_t status;
@@ -1582,7 +1599,6 @@ struct k_timer {
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), \
 	.expiry_fn = expiry, \
 	.stop_fn = stop, \
-	.period = 0, \
 	.status = 0, \
 	.user_data = 0, \
 	_OBJECT_TRACING_INIT \
@@ -1670,13 +1686,13 @@ extern void k_timer_init(struct k_timer *timer,
  * using the new duration and period values.
  *
  * @param timer     Address of timer.
- * @param duration  Initial timer duration (in milliseconds).
- * @param period    Timer period (in milliseconds).
+ * @param duration  Initial timer duration.
+ * @param period    Timer period.
  *
  * @return N/A
  */
 __syscall void k_timer_start(struct k_timer *timer,
-			     s32_t duration, s32_t period);
+			     k_timeout_t duration, k_timeout_t period);
 
 /**
  * @brief Stop a timer.
@@ -1729,6 +1745,7 @@ __syscall u32_t k_timer_status_get(struct k_timer *timer);
  */
 __syscall u32_t k_timer_status_sync(struct k_timer *timer);
 
+// FIXME: this one needs to be a ticks API and propagated appropriately (do in "end/remaining" patch)
 extern s32_t z_timeout_remaining(struct _timeout *timeout);
 
 /**
@@ -2133,14 +2150,14 @@ extern int k_queue_merge_slist(struct k_queue *queue, sys_slist_t *list);
  * @note Can be called by ISRs, but @a timeout must be set to K_NO_WAIT.
  *
  * @param queue Address of the queue.
- * @param timeout Non-negative waiting period to obtain a data item (in
- *                milliseconds), or one of the special values K_NO_WAIT and
+ * @param timeout Non-negative waiting period to obtain a data item
+ *                or one of the special values K_NO_WAIT and
  *                K_FOREVER.
  *
  * @return Address of the data item if successful; NULL if returned
  * without waiting, or waiting period timed out.
  */
-__syscall void *k_queue_get(struct k_queue *queue, s32_t timeout);
+__syscall void *k_queue_get(struct k_queue *queue, k_timeout_t timeout);
 
 /**
  * @brief Remove an element from a queue.
@@ -2302,7 +2319,7 @@ struct z_futex_data {
  * @param futex Address of the futex.
  * @param expected Expected value of the futex, if it is different the caller
  *		   will not wait on it.
- * @param timeout Non-negative waiting period on the futex, in milliseconds, or
+ * @param timeout Non-negative waiting period on the futex, or
  *		  one of the special values K_NO_WAIT or K_FOREVER.
  * @retval -EACCES Caller does not have read access to futex address.
  * @retval -EAGAIN If the futex value did not match the expected parameter.
@@ -2312,7 +2329,7 @@ struct z_futex_data {
  *	     should check the futex's value on wakeup to determine if it needs
  *	     to block again.
  */
-__syscall int k_futex_wait(struct k_futex *futex, int expected, s32_t timeout);
+__syscall int k_futex_wait(struct k_futex *futex, int expected, k_timeout_t timeout);
 
 /**
  * @brief Wake one/all threads pending on a futex
@@ -2473,7 +2490,7 @@ struct k_fifo {
  * @note Can be called by ISRs, but @a timeout must be set to K_NO_WAIT.
  *
  * @param fifo Address of the FIFO queue.
- * @param timeout Waiting period to obtain a data item (in milliseconds),
+ * @param timeout Waiting period to obtain a data item,
  *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @return Address of the data item if successful; NULL if returned
@@ -2633,7 +2650,7 @@ struct k_lifo {
  * @note Can be called by ISRs, but @a timeout must be set to K_NO_WAIT.
  *
  * @param lifo Address of the LIFO queue.
- * @param timeout Waiting period to obtain a data item (in milliseconds),
+ * @param timeout Waiting period to obtain a data item,
  *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @return Address of the data item if successful; NULL if returned
@@ -2771,8 +2788,8 @@ __syscall int k_stack_push(struct k_stack *stack, stack_data_t data);
  *
  * @param stack Address of the stack.
  * @param data Address of area to hold the value popped from the stack.
- * @param timeout Non-negative waiting period to obtain a value (in
- *                milliseconds), or one of the special values K_NO_WAIT and
+ * @param timeout Waiting period to obtain a value,
+ *                or one of the special values K_NO_WAIT and
  *                K_FOREVER.
  *
  * @retval 0 Element popped from stack.
@@ -2781,7 +2798,7 @@ __syscall int k_stack_push(struct k_stack *stack, stack_data_t data);
  * @req K-STACK-001
  */
 __syscall int k_stack_pop(struct k_stack *stack, stack_data_t *data,
-			  s32_t timeout);
+			  k_timeout_t timeout);
 
 /**
  * @brief Statically define and initialize a stack
@@ -3086,8 +3103,7 @@ extern void k_delayed_work_init(struct k_delayed_work *work,
  *
  * @param work_q Address of workqueue.
  * @param work Address of delayed work item.
- * @param delay Non-negative delay before submitting the work item (in
- *		milliseconds).
+ * @param delay Delay before submitting the work item
  *
  * @retval 0 Work item countdown started.
  * @retval -EINVAL Work item is being processed or has completed its work.
@@ -3096,7 +3112,7 @@ extern void k_delayed_work_init(struct k_delayed_work *work,
  */
 extern int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 					  struct k_delayed_work *work,
-					  s32_t delay);
+					  k_timeout_t delay);
 
 /**
  * @brief Cancel a delayed work item.
@@ -3172,8 +3188,7 @@ static inline void k_work_submit(struct k_work *work)
  * @note Can be called by ISRs.
  *
  * @param work Address of delayed work item.
- * @param delay Non-negative delay before submitting the work item (in
- *		milliseconds).
+ * @param delay Delay before submitting the work item
  *
  * @retval 0 Work item countdown started.
  * @retval -EINVAL Work item is being processed or has completed its work.
@@ -3181,7 +3196,7 @@ static inline void k_work_submit(struct k_work *work)
  * @req K-DWORK-001
  */
 static inline int k_delayed_work_submit(struct k_delayed_work *work,
-					s32_t delay)
+					k_timeout_t delay)
 {
 	return k_delayed_work_submit_to_queue(&k_sys_work_q, work, delay);
 }
@@ -3243,7 +3258,7 @@ extern void k_work_poll_init(struct k_work_poll *work,
  * @param work Address of delayed work item.
  * @param events An array of pointers to events which trigger the work.
  * @param num_events The number of events in the array.
- * @param timeout Non-negative timeout after which the work will be scheduled
+ * @param timeout Timeout after which the work will be scheduled
  *		  for execution even if not triggered.
  *
  *
@@ -3255,7 +3270,7 @@ extern int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 				       struct k_work_poll *work,
 				       struct k_poll_event *events,
 				       int num_events,
-				       s32_t timeout);
+				       k_timeout_t timeout);
 
 /**
  * @brief Submit a triggered work item to the system workqueue.
@@ -3281,7 +3296,7 @@ extern int k_work_poll_submit_to_queue(struct k_work_q *work_q,
  * @param work Address of delayed work item.
  * @param events An array of pointers to events which trigger the work.
  * @param num_events The number of events in the array.
- * @param timeout Non-negative timeout after which the work will be scheduled
+ * @param timeout Timeout after which the work will be scheduled
  *		  for execution even if not triggered.
  *
  * @retval 0 Work item started watching for events.
@@ -3291,7 +3306,7 @@ extern int k_work_poll_submit_to_queue(struct k_work_q *work_q,
 static inline int k_work_poll_submit(struct k_work_poll *work,
 				     struct k_poll_event *events,
 				     int num_events,
-				     s32_t timeout)
+				     k_timeout_t timeout)
 {
 	return k_work_poll_submit_to_queue(&k_sys_work_q, work,
 						events, num_events, timeout);
@@ -3399,8 +3414,8 @@ __syscall int k_mutex_init(struct k_mutex *mutex);
  * completes immediately and the lock count is increased by 1.
  *
  * @param mutex Address of the mutex.
- * @param timeout Non-negative waiting period to lock the mutex (in
- *                milliseconds), or one of the special values K_NO_WAIT and
+ * @param timeout Waiting period to lock the mutex,
+ *                or one of the special values K_NO_WAIT and
  *                K_FOREVER.
  *
  * @retval 0 Mutex locked.
@@ -3408,7 +3423,7 @@ __syscall int k_mutex_init(struct k_mutex *mutex);
  * @retval -EAGAIN Waiting period timed out.
  * @req K-MUTEX-002
  */
-__syscall int k_mutex_lock(struct k_mutex *mutex, s32_t timeout);
+__syscall int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout);
 
 /**
  * @brief Unlock a mutex.
@@ -3494,16 +3509,15 @@ __syscall int k_sem_init(struct k_sem *sem, unsigned int initial_count,
  * @note Can be called by ISRs, but @a timeout must be set to K_NO_WAIT.
  *
  * @param sem Address of the semaphore.
- * @param timeout Non-negative waiting period to take the semaphore (in
- *                milliseconds), or one of the special values K_NO_WAIT and
- *                K_FOREVER.
+ * @param timeout Waiting period to take the semaphore,
+ *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 Semaphore taken.
  * @retval -EBUSY Returned without waiting.
  * @retval -EAGAIN Waiting period timed out.
  * @req K-SEM-001
  */
-__syscall int k_sem_take(struct k_sem *sem, s32_t timeout);
+__syscall int k_sem_take(struct k_sem *sem, k_timeout_t timeout);
 
 /**
  * @brief Give a semaphore.
@@ -3747,8 +3761,8 @@ int k_msgq_cleanup(struct k_msgq *msgq);
  *
  * @param msgq Address of the message queue.
  * @param data Pointer to the message.
- * @param timeout Non-negative waiting period to add the message (in
- *                milliseconds), or one of the special values K_NO_WAIT and
+ * @param timeout Non-negative waiting period to add the message,
+ *                or one of the special values K_NO_WAIT and
  *                K_FOREVER.
  *
  * @retval 0 Message sent.
@@ -3756,7 +3770,7 @@ int k_msgq_cleanup(struct k_msgq *msgq);
  * @retval -EAGAIN Waiting period timed out.
  * @req K-MSGQ-002
  */
-__syscall int k_msgq_put(struct k_msgq *msgq, void *data, s32_t timeout);
+__syscall int k_msgq_put(struct k_msgq *msgq, void *data, k_timeout_t timeout);
 
 /**
  * @brief Receive a message from a message queue.
@@ -3768,8 +3782,8 @@ __syscall int k_msgq_put(struct k_msgq *msgq, void *data, s32_t timeout);
  *
  * @param msgq Address of the message queue.
  * @param data Address of area to hold the received message.
- * @param timeout Non-negative waiting period to receive the message (in
- *                milliseconds), or one of the special values K_NO_WAIT and
+ * @param timeout Waiting period to receive the message,
+ *                or one of the special values K_NO_WAIT and
  *                K_FOREVER.
  *
  * @retval 0 Message received.
@@ -3777,7 +3791,7 @@ __syscall int k_msgq_put(struct k_msgq *msgq, void *data, s32_t timeout);
  * @retval -EAGAIN Waiting period timed out.
  * @req K-MSGQ-002
  */
-__syscall int k_msgq_get(struct k_msgq *msgq, void *data, s32_t timeout);
+__syscall int k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout);
 
 /**
  * @brief Peek/read a message from a message queue.
@@ -3986,8 +4000,8 @@ extern void k_mbox_init(struct k_mbox *mbox);
  *
  * @param mbox Address of the mailbox.
  * @param tx_msg Address of the transmit message descriptor.
- * @param timeout Non-negative waiting period for the message to be received (in
- *                milliseconds), or one of the special values K_NO_WAIT
+ * @param timeout Waiting period for the message to be received,
+ *                or one of the special values K_NO_WAIT
  *                and K_FOREVER. Once the message has been received,
  *                this routine waits as long as necessary for the message
  *                to be completely processed.
@@ -3998,7 +4012,7 @@ extern void k_mbox_init(struct k_mbox *mbox);
  * @req K-MBOX-002
  */
 extern int k_mbox_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
-		      s32_t timeout);
+		      k_timeout_t timeout);
 
 /**
  * @brief Send a mailbox message in an asynchronous manner.
@@ -4029,9 +4043,8 @@ extern void k_mbox_async_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
  * @param rx_msg Address of the receive message descriptor.
  * @param buffer Address of the buffer to receive data, or NULL to defer data
  *               retrieval and message disposal until later.
- * @param timeout Non-negative waiting period for a message to be received (in
- *                milliseconds), or one of the special values K_NO_WAIT
- *                and K_FOREVER.
+ * @param timeout Waiting period for a message to be received,
+ *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 Message received.
  * @retval -ENOMSG Returned without waiting.
@@ -4039,7 +4052,7 @@ extern void k_mbox_async_put(struct k_mbox *mbox, struct k_mbox_msg *tx_msg,
  * @req K-MBOX-002
  */
 extern int k_mbox_get(struct k_mbox *mbox, struct k_mbox_msg *rx_msg,
-		      void *buffer, s32_t timeout);
+		      void *buffer, k_timeout_t timeout);
 
 /**
  * @brief Retrieve mailbox message data into a buffer.
@@ -4081,8 +4094,8 @@ extern void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
  * @param rx_msg Address of a receive message descriptor.
  * @param pool Address of memory pool, or NULL to discard data.
  * @param block Address of the area to hold memory pool block info.
- * @param timeout Non-negative waiting period to wait for a memory pool block
- *                (in milliseconds), or one of the special values K_NO_WAIT
+ * @param timeout Time to wait for a memory pool block,
+ *                or one of the special values K_NO_WAIT
  *                and K_FOREVER.
  *
  * @retval 0 Data retrieved.
@@ -4092,7 +4105,7 @@ extern void k_mbox_data_get(struct k_mbox_msg *rx_msg, void *buffer);
  */
 extern int k_mbox_data_block_get(struct k_mbox_msg *rx_msg,
 				 struct k_mem_pool *pool,
-				 struct k_mem_block *block, s32_t timeout);
+				 struct k_mem_block *block, k_timeout_t timeout);
 
 /** @} */
 
@@ -4226,9 +4239,8 @@ __syscall int k_pipe_alloc_init(struct k_pipe *pipe, size_t size);
  * @param bytes_to_write Size of data (in bytes).
  * @param bytes_written Address of area to hold the number of bytes written.
  * @param min_xfer Minimum number of bytes to write.
- * @param timeout Non-negative waiting period to wait for the data to be written
- *                (in milliseconds), or one of the special values K_NO_WAIT
- *                and K_FOREVER.
+ * @param timeout Waiting period to wait for the data to be written,
+ *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 At least @a min_xfer bytes of data were written.
  * @retval -EIO Returned without waiting; zero data bytes were written.
@@ -4238,7 +4250,7 @@ __syscall int k_pipe_alloc_init(struct k_pipe *pipe, size_t size);
  */
 __syscall int k_pipe_put(struct k_pipe *pipe, void *data,
 			 size_t bytes_to_write, size_t *bytes_written,
-			 size_t min_xfer, s32_t timeout);
+			 size_t min_xfer, k_timeout_t timeout);
 
 /**
  * @brief Read data from a pipe.
@@ -4250,9 +4262,8 @@ __syscall int k_pipe_put(struct k_pipe *pipe, void *data,
  * @param bytes_to_read Maximum number of data bytes to read.
  * @param bytes_read Address of area to hold the number of bytes read.
  * @param min_xfer Minimum number of data bytes to read.
- * @param timeout Non-negative waiting period to wait for the data to be read
- *                (in milliseconds), or one of the special values K_NO_WAIT
- *                and K_FOREVER.
+ * @param timeout Waiting period to wait for the data to be read,
+ *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 At least @a min_xfer bytes of data were read.
  * @retval -EINVAL invalid parameters supplied
@@ -4263,7 +4274,7 @@ __syscall int k_pipe_put(struct k_pipe *pipe, void *data,
  */
 __syscall int k_pipe_get(struct k_pipe *pipe, void *data,
 			 size_t bytes_to_read, size_t *bytes_read,
-			 size_t min_xfer, s32_t timeout);
+			 size_t min_xfer, k_timeout_t timeout);
 
 /**
  * @brief Write memory block to a pipe.
@@ -4385,8 +4396,8 @@ extern int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
  *
  * @param slab Address of the memory slab.
  * @param mem Pointer to block address area.
- * @param timeout Non-negative waiting period to wait for operation to complete
- *        (in milliseconds). Use K_NO_WAIT to return without waiting,
+ * @param timeout Non-negative waiting period to wait for operation to complete.
+ *        Use K_NO_WAIT to return without waiting,
  *        or K_FOREVER to wait as long as necessary.
  *
  * @retval 0 Memory allocated. The block address area pointed at by @a mem
@@ -4397,7 +4408,7 @@ extern int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
  * @req K-MSLAB-002
  */
 extern int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
-			    s32_t timeout);
+			    k_timeout_t timeout);
 
 /**
  * @brief Free memory allocated from a memory slab.
@@ -4509,8 +4520,8 @@ struct k_mem_pool {
  * @param pool Address of the memory pool.
  * @param block Pointer to block descriptor for the allocated memory.
  * @param size Amount of memory to allocate (in bytes).
- * @param timeout Non-negative waiting period to wait for operation to complete
- *        (in milliseconds). Use K_NO_WAIT to return without waiting,
+ * @param timeout Waiting period to wait for operation to complete.
+ *        Use K_NO_WAIT to return without waiting,
  *        or K_FOREVER to wait as long as necessary.
  *
  * @retval 0 Memory allocated. The @a data field of the block descriptor
@@ -4520,7 +4531,7 @@ struct k_mem_pool {
  * @req K-MPOOL-002
  */
 extern int k_mem_pool_alloc(struct k_mem_pool *pool, struct k_mem_block *block,
-			    size_t size, s32_t timeout);
+			    size_t size, k_timeout_t timeout);
 
 /**
  * @brief Allocate memory from a memory pool with malloc() semantics
@@ -4834,9 +4845,8 @@ extern void k_poll_event_init(struct k_poll_event *event, u32_t type,
  *
  * @param events An array of pointers to events to be polled for.
  * @param num_events The number of events in the array.
- * @param timeout Non-negative waiting period for an event to be ready (in
- *                milliseconds), or one of the special values K_NO_WAIT and
- *                K_FOREVER.
+ * @param timeout Waiting period for an event to be ready,
+ *                or one of the special values K_NO_WAIT and K_FOREVER.
  *
  * @retval 0 One or more events are ready.
  * @retval -EAGAIN Waiting period timed out.
@@ -4851,7 +4861,7 @@ extern void k_poll_event_init(struct k_poll_event *event, u32_t type,
  */
 
 __syscall int k_poll(struct k_poll_event *events, int num_events,
-		     s32_t timeout);
+		     k_timeout_t timeout);
 
 /**
  * @brief Initialize a poll signal object.

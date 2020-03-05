@@ -28,6 +28,51 @@
 extern "C" {
 #endif
 
+/**
+ * @addtogroup clock_apis
+ * @{
+ */
+
+// FIXME: select 32/64 bit size
+// FIXME: legacy support
+// FIXME: docs
+typedef u32_t k_ticks_t;
+
+#define K_TICKS_FOREVER ((k_ticks_t) -1)
+
+#ifndef CONFIG_LEGACY_TIMEOUT_API
+
+/* New timeout API */
+typedef struct {
+	k_ticks_t ticks;
+} k_timeout_t;
+
+#define K_TIMEOUT_NO_WAIT ((k_timeout_t) {})
+#define K_TIMEOUT_TICKS(t) ((k_timeout_t) { .ticks = (t) })
+#define K_FOREVER K_TIMEOUT_TICKS(K_TICKS_FOREVER)
+#define K_TIMEOUT_EQ(a, b) ((a).ticks == (b).ticks)
+#define K_TIMEOUT_MS(t) K_TIMEOUT_TICKS(k_ms_to_ticks_ceil32(MAX(t, 0)))
+#define K_TIMEOUT_US(t) K_TIMEOUT_TICKS(k_us_to_ticks_ceil32(MAX(t, 0)))
+#define K_TIMEOUT_NS(t) K_TIMEOUT_TICKS(k_ns_to_ticks_ceil32(MAX(t, 0)))
+#define K_TIMEOUT_CYC(t) K_TIMEOUT_TICKS(k_cyc_to_ticks_ceil32(MAX(t, 0)))
+
+#else
+
+/* Legacy timeout API */
+typedef s32_t k_timeout_t;
+#define K_TIMEOUT_NO_WAIT 0
+#define K_TIMEOUT_TICKS(t) k_ticks_to_ms_ceil32(t)
+#define K_FOREVER K_TICKS_FOREVER
+#define K_TIMEOUT_EQ(a, b) ((a) == (b))
+#define K_TIMEOUT_MS(t) (t)
+#define K_TIMEOUT_US(t) ((t) * 1000)
+#define K_TIMEOUT_NS(t) ((t) * 1000000)
+#define K_TIMEOUT_CYC(t) k_cyc_to_ms_ceil32(MAX(t, 0)))
+
+#endif
+
+/** @} */
+
 #ifdef CONFIG_TICKLESS_KERNEL
 extern int _sys_clock_always_on;
 extern void z_enable_sys_clock(void);
@@ -53,8 +98,6 @@ extern void z_enable_sys_clock(void);
 /* number of nanoseconds per second */
 #define NSEC_PER_SEC ((NSEC_PER_USEC) * (USEC_PER_MSEC) * (MSEC_PER_SEC))
 
-#define k_msleep(ms) k_sleep(ms)
-#define K_TIMEOUT_EQ(a, b) ((a) == (b))
 
 /* kernel clocks */
 

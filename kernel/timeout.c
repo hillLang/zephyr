@@ -24,7 +24,7 @@ static sys_dlist_t timeout_list = SYS_DLIST_STATIC_INIT(&timeout_list);
 static struct k_spinlock timeout_lock;
 
 #define MAX_WAIT (IS_ENABLED(CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE) \
-		  ? K_FOREVER : INT_MAX)
+		  ? K_TICKS_FOREVER : INT_MAX)
 
 /* Cycles left to process in the currently-executing z_clock_announce() */
 static int announce_remaining;
@@ -83,8 +83,14 @@ static s32_t next_timeout(void)
 	return ret;
 }
 
-void z_add_timeout(struct _timeout *to, _timeout_func_t fn, s32_t ticks)
+void z_add_timeout(struct _timeout *to, _timeout_func_t fn, k_timeout_t t)
 {
+#ifndef CONFIG_LEGACY_TIMEOUT_API
+	k_ticks_t ticks = t.ticks + 1;
+#else
+	k_ticks_t ticks = t;
+#endif
+
 	__ASSERT(!sys_dnode_is_linked(&to->node), "");
 	to->fn = fn;
 	ticks = MAX(1, ticks);
@@ -150,7 +156,7 @@ s32_t z_timeout_remaining(struct _timeout *timeout)
 
 s32_t z_get_next_timeout_expiry(void)
 {
-	s32_t ret = K_FOREVER;
+	s32_t ret = K_TICKS_FOREVER;
 
 	LOCKED(&timeout_lock) {
 		ret = next_timeout();
@@ -162,7 +168,7 @@ void z_set_timeout_expiry(s32_t ticks, bool idle)
 {
 	LOCKED(&timeout_lock) {
 		int next = next_timeout();
-		bool sooner = (next == K_FOREVER) || (ticks < next);
+		bool sooner = (next == K_TICKS_FOREVER) || (ticks < next);
 		bool imminent = next <= 1;
 
 		/* Only set new timeouts when they are sooner than
