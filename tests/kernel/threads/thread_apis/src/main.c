@@ -66,7 +66,7 @@ void test_systhreads_main(void)
  */
 void test_systhreads_idle(void)
 {
-	k_sleep(K_MSEC(100));
+	k_msleep(100);
 	/** TESTPOINT: check working thread priority should */
 	zassert_true(k_thread_priority_get(k_current_get()) <
 		     K_IDLE_PRIO, NULL);
@@ -80,7 +80,7 @@ static void customdata_entry(void *p1, void *p2, void *p3)
 	while (1) {
 		k_thread_custom_data_set((void *)data);
 		/* relinguish cpu for a while */
-		k_sleep(K_MSEC(50));
+		k_msleep(50);
 		/** TESTPOINT: custom data comparison */
 		zassert_equal(data, (long)k_thread_custom_data_get(), NULL);
 		data++;
@@ -99,7 +99,7 @@ void test_customdata_get_set_coop(void)
 				      customdata_entry, NULL, NULL, NULL,
 				      K_PRIO_COOP(1), 0, K_NO_WAIT);
 
-	k_sleep(K_MSEC(500));
+	k_msleep(500);
 
 	/* cleanup environment */
 	k_thread_abort(tid);
@@ -227,7 +227,7 @@ void test_customdata_get_set_preempt(void)
 				      customdata_entry, NULL, NULL, NULL,
 				      K_PRIO_PREEMPT(0), K_USER, K_NO_WAIT);
 
-	k_sleep(K_MSEC(500));
+	k_msleep(500);
 
 	/* cleanup environment */
 	k_thread_abort(tid);

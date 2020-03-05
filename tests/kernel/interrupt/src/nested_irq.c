@@ -5,7 +5,7 @@
  */
 #include "interrupt.h"
 
-#define DURATION 5
+#define DURATION K_MSEC(5)
 struct k_timer timer;
 
 /* This tests uses two IRQ lines, selected within the range of IRQ lines
@@ -33,7 +33,7 @@ u32_t irq_line_1;
 #define ISR1_PRIO 0
 #endif /* CONFIG_CPU_CORTEX_M */
 
-#define MS_TO_US(ms)  (K_MSEC(ms) * USEC_PER_MSEC)
+#define MS_TO_US(ms)  (ms * USEC_PER_MSEC)
 volatile u32_t new_val;
 u32_t old_val = 0xDEAD;
 volatile u32_t check_lock_new;
