@@ -113,6 +113,22 @@ void z_impl_k_timer_start(struct k_timer *timer, k_timeout_t duration,
 #ifdef CONFIG_LEGACY_TIMEOUT_API
 	duration = k_ms_to_ticks_ceil32(duration);
 	period = k_ms_to_ticks_ceil32(period);
+#else
+	/* z_add_timeout() always adds one to the incoming tick count
+	 * to round up to the next tick (by convention it waits for
+	 * "at least as long as the specified timeout"), but the
+	 * period interval is always guaranteed to be reset from
+	 * within the timer ISR, so no round up is desired.  Subtract
+	 * one.
+	 *
+	 * Note that the duration (!) value gets the same treatment
+	 * for backwards compatibility.  This is unfortunate
+	 * (i.e. k_timer_start() doesn't treat its initial sleep
+	 * argument the same way k_sleep() does), but historical.  The
+	 * timer_api test relies on this behavior.
+	 */
+	period.ticks = MAX(period.ticks - 1, 0);
+	duration.ticks = MAX(duration.ticks - 1, 0);
 #endif
 
 	(void)z_abort_timeout(&timer->timeout);
