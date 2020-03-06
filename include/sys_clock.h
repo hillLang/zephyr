@@ -36,7 +36,11 @@ extern "C" {
 // FIXME: select 32/64 bit size
 // FIXME: legacy support
 // FIXME: docs
+#ifdef CONFIG_TIMEOUT_64BIT
+typedef u64_t k_ticks_t;
+#else
 typedef u32_t k_ticks_t;
+#endif
 
 #define K_TICKS_FOREVER ((k_ticks_t) -1)
 
