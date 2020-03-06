@@ -50,17 +50,11 @@ int k_mem_pool_alloc(struct k_mem_pool *p, struct k_mem_block *block,
 		     size_t size, k_timeout_t timeout)
 {
 	int ret;
-	s64_t end = 0;
+	u64_t end = 0;
 
 	__ASSERT(!(arch_is_in_isr() && !K_TIMEOUT_EQ(timeout, K_NO_WAIT)), "");
 
-	if (!K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
-#ifdef CONFIG_LEGACY_TIMEOUT_API
-		end = k_uptime_get() + timeout;
-#else
-		end = 0;
-#endif
-	}
+	end = z_timeout_end_calc(timeout);
 
 	while (true) {
 		u32_t level_num, block_num;
@@ -80,12 +74,12 @@ int k_mem_pool_alloc(struct k_mem_pool *p, struct k_mem_block *block,
 		z_pend_curr_unlocked(&p->wait_q, timeout);
 
 		if (!K_TIMEOUT_EQ(timeout, K_FOREVER)) {
-#ifdef CONFIG_LEGACY_TIMEOUT_API
-			timeout = end - k_uptime_get();
-			if (timeout <= 0) {
+			s64_t remaining = end - z_tick_get();
+
+			if (remaining <= 0) {
 				break;
 			}
-#endif
+			timeout = K_TIMEOUT_TICKS(remaining);
 		}
 	}
 

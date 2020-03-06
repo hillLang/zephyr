@@ -175,6 +175,8 @@ s64_t z_tick_get(void);
 #define z_tick_get_32() (0)
 #endif
 
+u64_t z_timeout_end_calc(k_timeout_t timeout);
+
 /* timeouts */
 
 struct _timeout;

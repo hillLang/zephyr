@@ -254,3 +254,24 @@ static inline s64_t z_vrfy_k_uptime_get(void)
 }
 #include <syscalls/k_uptime_get_mrsh.c>
 #endif
+
+/* Returns the uptime expiration (relative to an unlocked "now"!) of a
+ * timeout object.
+ */
+u64_t z_timeout_end_calc(k_timeout_t timeout)
+{
+	k_ticks_t dt;
+
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
+		return UINT64_MAX;
+	} else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		return z_tick_get();
+	}
+
+#ifdef CONFIG_LEGACY_TIMEOUT_API
+	dt = k_ms_to_ticks_ceil32(timeout);
+#else
+	dt = timeout.ticks;
+#endif
+	return z_tick_get() + MAX(1, dt);
+}
