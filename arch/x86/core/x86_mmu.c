@@ -817,6 +817,27 @@ static void add_mmu_region(struct x86_page_tables *ptables,
 	}
 }
 
+
+void z_x86_add_mmu_region(uintptr_t addr, size_t size, u64_t flags,
+			  bool user_table)
+{
+	struct mmu_region rgn = {
+		.address = addr,
+		.size = size,
+		.flags = flags,
+	};
+
+	if (!user_table) {
+		add_mmu_region(&z_x86_kernel_ptables, &rgn, false);
+	} else {
+		add_mmu_region(&USER_PTABLES, &rgn, true);
+	}
+}
+
+void __weak z_x86_soc_add_mmu_regions(void)
+{
+}
+
 /* Called from x86's arch_kernel_init() */
 void z_x86_paging_init(void)
 {
@@ -828,6 +849,8 @@ void z_x86_paging_init(void)
 		add_mmu_region(&z_x86_user_ptables, rgn, true);
 #endif
 	}
+
+	z_x86_soc_add_mmu_regions();
 
 	pages_free = (page_pos - page_pool) / MMU_PAGE_SIZE;
 
