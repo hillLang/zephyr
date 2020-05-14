@@ -13,7 +13,11 @@
 static void irq_config_func_@NUM@(struct device *port);
 #endif
 
-static const struct uart_ns16550_device_config uart_ns16550_dev_cfg_@NUM@ = {
+static
+#ifndef UART_NS16550_PCIE_ENABLED
+const
+#endif
+struct uart_ns16550_device_config uart_ns16550_dev_cfg_@NUM@ = {
 	.devconf.port = DT_INST_REG_ADDR(@NUM@),
 	.devconf.sys_clk_freq = DT_INST_PROP(@NUM@, clock_frequency),
 
