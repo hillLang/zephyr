@@ -257,17 +257,11 @@ void dump_misc_regs(void)
 	printk("_memmap_vecbase_reset @ %p VECBASE %p\n",
 	       &_memmap_vecbase_reset, (void*)vecbase);
 
-	// Emit the window registers so I can find them and look them
-	// up
-	printk("DMWLO(3) @ %p = 0x%x\n", (void*)DMWLO(3), HP_SRAM_WIN3_SIZE | 0x7);
-	printk("DMWBA(3) @ %p = 0x%x\n", (void*)DMWBA(3),
-	       (int)(HP_SRAM_WIN3_BASE | DMWBA_READONLY | DMWBA_ENABLE));
 
-
-	printk("\nWindow 0 %dkb @ %p\n", HP_SRAM_WIN0_SIZE / 1024, (void*)HP_SRAM_WIN0_BASE);
-	printk("Window 1 %dkb @ %p\n", HP_SRAM_WIN1_SIZE / 1024, (void*)HP_SRAM_WIN1_BASE);
-	printk("Window 2 %dkb @ %p\n", HP_SRAM_WIN2_SIZE / 1024, (void*)HP_SRAM_WIN2_BASE);
-	printk("Window 3 %dkb @ %p\n\n", HP_SRAM_WIN3_SIZE / 1024, (void*)HP_SRAM_WIN3_BASE);
+	for(int w=0; w<4; w++) {
+		printk("Window %d @%p limit offset %d\n",
+		       w, *(void**)DMWBA(w), (*(int*)DMWLO(w))>>3);
+	}
 }
 
 
