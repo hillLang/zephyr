@@ -27,4 +27,9 @@
 #include "soc_gpio.h"
 #endif
 
+#include <drivers/pcie/pcie.h>
+
+#define X86_SOC_EARLY_SERIAL_PCIDEV PCIE_BDF(0, 0x18, 0)
+
+
 #endif /* __SOC_H_ */
