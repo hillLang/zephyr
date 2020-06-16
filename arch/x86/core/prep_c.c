@@ -11,6 +11,11 @@
 
 extern FUNC_NORETURN void z_cstart(void);
 
+__weak void x86_irq_init(void)
+{
+}
+
+
 /* Early global initialization functions, C domain. This runs only on the first
  * CPU for SMP systems.
  */
@@ -43,6 +48,8 @@ FUNC_NORETURN void z_x86_prep_c(void *arg)
 			    MMU_PAGE_SIZE, MMU_ENTRY_READ, Z_X86_MMU_RW,
 			    true);
 #endif
+
+	x86_irq_init();
 
 #if defined(CONFIG_SMP)
 	z_x86_ipi_setup();

@@ -28,6 +28,20 @@ unsigned char _irq_to_interrupt_vector[CONFIG_MAX_IRQ_LINES];
 void (*x86_irq_funcs[NR_IRQ_VECTORS])(void *);
 void *x86_irq_args[NR_IRQ_VECTORS];
 
+static void irq_spurious(void *arg)
+{
+	printk("Spurious IRQ, vector %d\n", (uint32_t)(uint64_t)arg);
+	z_fatal_error(K_ERR_SPURIOUS_IRQ, NULL);
+}
+
+void x86_irq_init(void)
+{
+	for (int i = 0; i < NR_IRQ_VECTORS; i++) {
+		x86_irq_funcs[i] = irq_spurious;
+		x86_irq_args[i] = (void *)(long)i;
+	}
+}
+
 /*
  * Find a free IRQ vector at the specified priority, or return -1 if none left.
  */
