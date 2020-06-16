@@ -31,7 +31,7 @@ void *x86_irq_args[NR_IRQ_VECTORS];
 static void irq_spurious(void *arg)
 {
 	printk("Spurious IRQ, vector %d\n", (uint32_t)(uint64_t)arg);
-	z_fatal_error(K_ERR_SPURIOUS_IRQ, NULL);
+	//z_fatal_error(K_ERR_SPURIOUS_IRQ, NULL);
 }
 
 void x86_irq_init(void)

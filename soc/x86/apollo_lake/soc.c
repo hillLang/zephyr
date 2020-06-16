@@ -222,4 +222,9 @@ void z_x86_soc_add_mmu_regions(void)
 #endif /* CONFIG_PCIE */
 }
 
+/* On EHL, the console device is UART2 (PCI: 00:19.2 8086:4b4d) and
+ * has its default MMIO registers very high
+ */
+MMU_BOOT_REGION(0x601320000L, 0x1000, MMU_ENTRY_READ | MMU_ENTRY_WRITE);
+
 #endif  /* CONFIG_X86_MMU */
