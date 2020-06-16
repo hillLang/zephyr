@@ -41,11 +41,11 @@
 		compatible = "simple-bus";
 		ranges;
 
-		uart0: uart@c000 {
+		uart0: uart@ca00 {
 			compatible = "ns16550";
 
 			pcie;
-			reg = <PCIE_BDF(0,0x18,0) PCIE_ID(0x8086,0x5abc)>;
+			reg = <PCIE_BDF(0,0x19,2) PCIE_ID(0x8086,0x4b4d)>;
 
 			label = "UART_0";
 			clock-frequency = <1843200>;

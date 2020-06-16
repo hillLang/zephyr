@@ -19,7 +19,7 @@ config APIC_TIMER
 	default y if !HPET_TIMER
 
 config PCIE_MMIO_CFG
-	default y
+	default n
 
 if APIC_TIMER
 
