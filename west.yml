@@ -21,6 +21,8 @@ manifest:
   remotes:
     - name: upstream
       url-base: https://github.com/zephyrproject-rtos
+    - name: thesofproject
+      url-base: https://github.com/thesofproject
 
   #
   # Please add items below based on alphabetical order
@@ -136,6 +138,10 @@ manifest:
     - name: trusted-firmware-m
       path: modules/tee/tfm
       revision: 58c70aeb9937c3b6b97a07cc654e48b2c56c258a
+    - name: sof
+      remote: thesofproject
+      revision: lrg/topic/zephyr-app
+      path: modules/audio/sof
 
   self:
     path: zephyr
